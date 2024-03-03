@@ -1,0 +1,9 @@
+[package]
+name = "pathtracker-rust"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anymap2 = "0.13.0"
+const_format = "0.2.32"
+thiserror = "1.0.57"
