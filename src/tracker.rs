@@ -1,8 +1,9 @@
-use std::{cmp::Ordering, collections::HashSet, ops::RangeBounds};
+use std::{cmp::Ordering, collections::HashSet, fs::File, io::{BufReader, Read, Write}, ops::RangeBounds};
+use serde::{Serialize, Deserialize};
 
 use thiserror::Error;
 
-use crate::character::{Chr, Health};
+use crate::{character::{Chr, Health}, saver::Saver};
 
 #[derive(Debug, Error)]
 #[derive(PartialEq)]
@@ -25,14 +26,16 @@ pub type TrackerResult = Result<(), Error>;
 #[derive(Debug)]
 #[derive(Clone)]
 #[derive(PartialEq)]
-pub struct Tracker {
+#[derive(Serialize, Deserialize)]
+pub struct Tracker<S: Saver> {
     chrs: Vec<Chr>,
     in_turn_index: Option<usize>,
+    saver: S,
 }
 
-impl Default for Tracker {
+impl<S: Saver> Default for Tracker<S> {
     fn default() -> Self {
-        Tracker::new(vec![])
+        TrackerBuilder::default().build()
     }
 }
 
@@ -43,14 +46,44 @@ pub enum MovedStatus {
     TwoTurns(Chr),
 }
 
-impl Tracker {
-    pub fn new(chrs: impl Into<Vec<Chr>>) -> Self {
+struct TrackerBuilder<S: Saver> {
+    chrs: Vec<Chr>,
+    in_turn_index: Option<usize>,
+    saver: S,
+}
+
+impl<S: Saver> Default for TrackerBuilder<S> {
+    fn default() -> Self {
+        TrackerBuilder { chrs: vec![], in_turn_index: None, saver: todo!() }
+    }
+}
+
+impl<S: Saver> TrackerBuilder<S> {
+    pub fn with_saver(mut self, saver: S) -> Self {
+        self.saver = saver;
+        self
+    }
+
+    pub fn with_chrs(mut self, chrs: impl Into<Vec<Chr>>) -> Self {
         let mut chrs: Vec<Chr> = chrs.into();
         chrs.sort();
+        self.chrs = chrs;
+        self
+    }
+
+    pub fn build(self) -> Tracker<S> {
+
         Tracker {
-            chrs,
-            in_turn_index: None
+            chrs: self.chrs,
+            in_turn_index: self.in_turn_index,
+            saver: self.saver,
         }
+    }
+}
+
+impl<S: Saver> Tracker<S> {
+    pub fn new(chrs: impl Into<Vec<Chr>>) -> TrackerBuilder<S> {
+        TrackerBuilder::default()
     }
 
     pub fn get_chr(&self, name: &str) -> Option<&Chr> {
@@ -209,5 +242,15 @@ impl Tracker {
         }
 
         Ok(None)
+    }
+
+    pub fn save(&self, file: impl Into<String>) -> TrackerResult {
+        self.saver.save(self, format!("saves/{}", file.into()));
+        Ok(())
+    }
+
+    fn auto_save(&self) -> TrackerResult {
+        self.save("auto").unwrap();
+        Ok(())
     }
 }

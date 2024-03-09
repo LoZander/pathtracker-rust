@@ -1,8 +1,11 @@
 use std::{cmp::Ordering, collections::HashSet};
 
+use serde::{Deserialize, Serialize};
+
 #[derive(Debug)]
 #[derive(Clone)]
 #[derive(PartialEq, Eq)]
+#[derive(Serialize, Deserialize)]
 pub struct Health {
     pub current: u32,
     pub max: u32,
@@ -27,6 +30,7 @@ impl Health {
 #[derive(Clone)]
 #[derive(PartialEq, Eq)]
 #[derive(Hash)]
+#[derive(Serialize, Deserialize)]
 pub struct Condition {
     pub name: String,
     pub level: u8,
@@ -38,6 +42,7 @@ pub struct Condition {
 #[derive(Clone)]
 #[derive(PartialEq, Eq)]
 #[derive(Hash)]
+#[derive(Serialize, Deserialize)]
 pub enum CondTrigger {
     Manual,
     StartOfTurn,
@@ -47,6 +52,7 @@ pub enum CondTrigger {
 #[derive(Debug)]
 #[derive(Clone)]
 #[derive(PartialEq, Eq)]
+#[derive(Serialize, Deserialize)]
 pub struct Chr {
     pub name: String,
     pub init: i32,
