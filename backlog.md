@@ -3,6 +3,7 @@
 - [ ] save tracker
 - [ ] clear tracker
 - [ ] GUI
+- [ ] test `tracker::change*`
 
 # Dream
 - save tracker

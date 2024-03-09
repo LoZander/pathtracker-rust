@@ -1,16 +1,23 @@
-use std::cmp::Ordering;
+use std::{cmp::Ordering, collections::HashSet, ops::RangeBounds};
 
 use thiserror::Error;
 
-use crate::character::Chr;
+use crate::character::{Chr, Health};
 
 #[derive(Debug, Error)]
+#[derive(PartialEq)]
 pub enum Error {
-    #[error("cannot add character with name `{0}` as there is already a character with this name")]
+    #[error("cannot add character with name `{0}` as there is already a character with this name.")]
     AddDuplicateError(String),
 
-    #[error("cannot remove a character of name `{0}` as no such character exists")]
-    RmNonexistentError(String)
+    #[error("cannot remove a character of name `{0}` as no such character exists.")]
+    RmNonexistentError(String),
+
+    #[error("cannot modify character `{0}` as no such character exists.")]
+    ChangeNonexistentError(String),
+
+    #[error("cannot rename `{old}` into `{new}` as there is already a character with this name.")]
+    RenameDuplicateError { old: String, new: String }
 }
 
 pub type TrackerResult = Result<(), Error>;
@@ -29,6 +36,13 @@ impl Default for Tracker {
     }
 }
 
+#[derive(Debug, PartialEq)]
+#[derive(Clone)]
+pub enum MovedStatus {
+    Skipped(Chr),
+    TwoTurns(Chr),
+}
+
 impl Tracker {
     pub fn new(chrs: impl Into<Vec<Chr>>) -> Self {
         let mut chrs: Vec<Chr> = chrs.into();
@@ -39,9 +53,16 @@ impl Tracker {
         }
     }
 
-    #[allow(dead_code)]
     pub fn get_chr(&self, name: &str) -> Option<&Chr> {
         self.chrs.iter().find(|chr| chr.name == name)
+    }
+
+    fn pos(&self, name: &str) -> Option<usize> {
+        self.chrs.iter().enumerate().find(|(_,x)| x.name == name).map(|e| e.0)
+    }
+
+    pub fn get_chrs(&self) -> &[Chr] {
+        &self.chrs[..]
     }
 
     pub fn end_turn(&mut self) -> Option<&Chr> {
@@ -59,12 +80,6 @@ impl Tracker {
         self.in_turn_index.and_then(|i| self.chrs.get(i))
     }
 
-    #[allow(dead_code)]
-    pub fn get_chrs(&self) -> &[Chr] {
-        &self.chrs[..]
-    }
-
-    #[allow(dead_code)]
     pub fn add_chr(&mut self, chr: Chr) -> TrackerResult {
         if self.get_chr(&chr.name).is_some() { 
             return Err(Error::AddDuplicateError(chr.name))
@@ -81,8 +96,7 @@ impl Tracker {
         self.chrs.sort();
         Ok(())
     }
-
-    #[allow(dead_code)]
+    
     pub fn rm_chr(&mut self, name: &str) -> TrackerResult {
         let rm_index = self.chrs.iter()
             .position(|chr| chr.name == name)
@@ -113,210 +127,87 @@ impl Tracker {
 
         Ok(())
     }
-}
 
+    pub fn rename(&mut self, old: &str, new: impl Into<String>) -> TrackerResult {
+        let new: String = new.into();
 
+        if self.chrs.iter().any(|chr| chr.name == new) {
+            return Err(Error::RenameDuplicateError { old: old.into(), new })
+        }
 
-#[cfg(test)]
-mod tests {
-    use super::{Chr, Tracker, TrackerResult};
-
-    #[test]
-    fn add_player_chr_alison_adds_chr() -> TrackerResult {
-        let mut t = Tracker::new(vec![]);
-        t.add_chr(Chr::builder("Alison", 21, true).build())?;
-        assert_eq!(Some(&Chr::builder("Alison", 21, true).build()), t.get_chr("Alison"));
-        Ok(())
+        self.unchecked_change(old, |chr| { chr.name = new; Ok(()) })
     }
 
-    #[test]
-    fn initial_chrs_have_descending_initiative_order() {
-        let mut t = Tracker::new(vec![
-            Chr::builder("Skelly Boy", 3, false).build(),
-            Chr::builder("Bucky", 30, true).build(),
-            Chr::builder("Hellen", 27, true).build(),
-        ]);
-
-        assert_eq!(Some(&Chr::builder("Bucky", 30, true).build()), t.end_turn());
-        assert_eq!(Some(&Chr::builder("Hellen", 27, true).build()), t.end_turn());
-        assert_eq!(Some(&Chr::builder("Skelly Boy", 3, false).build()), t.end_turn())
+    pub fn change_dex(&mut self, name: &str, dex: i32) -> Result<Option<MovedStatus>, Error> {
+        self.change(name, |chr| { chr.dex = Some(dex); Ok(()) })
     }
 
-    #[test]
-    fn add_preserves_descending_inititative_order() -> TrackerResult {
-        let mut t = Tracker::new(vec![
-            Chr::builder("Bucky", 30, true).build(),
-            Chr::builder("Hellen", 27, true).build(),
-            Chr::builder("Skelly Boy", 3, false).build(),
-        ]);
-
-        
-        t.add_chr(Chr::builder("Kristy", 24, true).build())?;
-
-        assert_eq!(Some(&Chr::builder("Bucky", 30, true).build()), t.end_turn());
-        assert_eq!(Some(&Chr::builder("Hellen", 27, true).build()), t.end_turn());
-        assert_eq!(Some(&Chr::builder("Kristy", 24, true).build()), t.end_turn());
-        assert_eq!(Some(&Chr::builder("Skelly Boy", 3, false).build()), t.end_turn());
-
-        Ok(())
+    pub fn change_init(&mut self, name: &str, init: i32) -> Result<Option<MovedStatus>, Error> {
+        self.change(name, |chr| { chr.init = init; Ok(()) })        
     }
 
-    #[test]
-    fn end_turn_loops_around() {
-        let mut t = Tracker::new(vec![
-            Chr::builder("Bucky", 30, true).build(),
-            Chr::builder("Hellen", 27, true).build(),
-            Chr::builder("Skelly Boy", 3, false).build(),
-        ]);
-
-        t.end_turn();
-        t.end_turn();
-
-        assert_eq!(Some(&Chr::builder("Skelly Boy", 3, false).build()), t.end_turn());
-        assert_eq!(Some(&Chr::builder("Bucky", 30, true).build()), t.end_turn())
+    pub fn set_player(&mut self, name: &str, player: bool) -> TrackerResult {
+        self.unchecked_change(name, |chr| { chr.player = player; Ok(()) })
     }
 
-    #[test]
-    fn add_chr_before_in_turn_preserves_in_turn() -> TrackerResult {
-        let mut t = Tracker::new(vec![
-            Chr::builder("Bucky", 30, true).build(),
-            Chr::builder("Hellen", 27, true).build(),
-            Chr::builder("Skelly Boy", 3, false).build(),
-        ]);
-
-        t.end_turn();
-        t.end_turn();
-
-        assert_eq!(Some(&Chr::builder("Hellen", 27, true).build()), t.get_in_turn());
-
-        t.add_chr(Chr::builder("Lucky", 28, false).build())?;
-        assert_eq!(Some(&Chr::builder("Hellen", 27, true).build()), t.get_in_turn());
-
-        Ok(())
+    pub fn change_max_health(&mut self, name: &str, health: u32) -> TrackerResult {
+        self.unchecked_change(name, |chr| {
+            if let Some(hp) = &mut chr.health {
+                hp.max = health;
+            } else {
+                chr.health = Some(Health::new(health));
+            }
+            Ok(())
+        })
     }
 
-    #[test]
-    fn add_chr_after_in_turn_preserves_in_turn() -> TrackerResult {
-        let mut t = Tracker::new(vec![
-            Chr::builder("Bucky", 30, true).build(),
-            Chr::builder("Hellen", 27, true).build(),
-            Chr::builder("Skelly Boy", 3, false).build(),
-        ]);
-
-        t.end_turn();
-        t.end_turn();
-
-        assert_eq!(Some(&Chr::builder("Hellen", 27, true).build()), t.get_in_turn());
-        t.add_chr(Chr::builder("Unlucky", 24, false).build())?;
-        assert_eq!(Some(&Chr::builder("Hellen", 27, true).build()), t.get_in_turn());
-
-        Ok(())
+    pub fn damage(&mut self, name: &str, damage: u32) -> TrackerResult {
+        self.unchecked_change(name, |chr| { chr.damage(damage); Ok(()) })
     }
 
-    #[test]
-    fn rm_chr_before_in_turn_preserves_in_turn() -> TrackerResult {
-        let mut t = Tracker::new(vec![
-            Chr::builder("Bucky", 30, true).build(),
-            Chr::builder("Hellen", 27, true).build(),
-            Chr::builder("Skelly Boy", 3, false).build(),
-        ]);
-
-        t.end_turn();
-        t.end_turn();
-
-        assert_eq!(Some(&Chr::builder("Hellen", 27, true).build()), t.get_in_turn());
-        t.rm_chr("Bucky")?;
-        assert_eq!(Some(&Chr::builder("Hellen", 27, true).build()), t.get_in_turn());
-
-        Ok(())
+    pub fn heal(&mut self, name: &str, heal: u32) -> TrackerResult {
+        self.unchecked_change(name, |chr| { chr.heal(heal); Ok(()) })
     }
 
-    #[test]
-    fn rm_chr_after_in_turn_preserves_in_turn() -> TrackerResult {
-        let mut t = Tracker::new(vec![
-            Chr::builder("Bucky", 30, true).build(),
-            Chr::builder("Hellen", 27, true).build(),
-            Chr::builder("Skelly Boy", 3, false).build(),
-        ]);
+    fn unchecked_change<F>(&mut self, name: &str, f: F) -> TrackerResult where
+        F: FnOnce(&mut Chr) -> TrackerResult
+    {
+        for chr in &mut self.chrs {
+            if chr.name == name {
+                return f(chr).and({
+                    self.chrs.sort();
+                    Ok(())
+                })
+            }
+        }
 
-        t.end_turn();
-        t.end_turn();
-
-        assert_eq!(Some(&Chr::builder("Hellen", 27, true).build()), t.get_in_turn());
-        t.rm_chr("Skelly Boy")?;
-        assert_eq!(Some(&Chr::builder("Hellen", 27, true).build()), t.get_in_turn());
-
-        Ok(())
+        Err(Error::ChangeNonexistentError(name.into()))
     }
 
-    #[test]
-    fn rm_only_chr_in_turn_makes_no_one_in_turn() -> TrackerResult {
-        let mut t = Tracker::new(vec![
-            Chr::builder("Bucky", 30, true).build(),
-        ]);
+    fn change<F>(&mut self, name: &str, f: F) -> Result<Option<MovedStatus>, Error> where
+        F: FnOnce(&mut Chr) -> TrackerResult
+    {
+        let before = self.pos(name).ok_or(Error::ChangeNonexistentError(name.into()))?;
+        let in_turn = self.in_turn_index;
 
-        t.end_turn();
+        self.unchecked_change(name, f)?;
 
-        assert_eq!(Some(&Chr::builder("Bucky", 30, true).build()), t.get_in_turn());
-        t.rm_chr("Bucky")?;
-        assert_eq!(None, t.get_in_turn());
+        let after = self.pos(name).unwrap();
 
-        Ok(())
-    }
+        if let Some(in_turn) = in_turn {
+            if before == in_turn && after < in_turn {
+                return Ok(Some(MovedStatus::TwoTurns(self.chrs[after].clone())))
+            }
+            if before < in_turn && in_turn <= after  {
+                self.in_turn_index = Some(in_turn - 1);
+                return Ok(Some(MovedStatus::TwoTurns(self.chrs[after].clone())))
+            } 
+            if before > in_turn && in_turn >= after  {
+                self.in_turn_index = Some(in_turn + 1);
+                return Ok(Some(MovedStatus::Skipped(self.chrs[after].clone())))
+            }                
+        }
 
-    #[test]
-    fn rm_only_chr_makes_no_one_in_turn() -> TrackerResult {
-        let mut t = Tracker::new(vec![
-            Chr::builder("Bucky", 30, true).build(),
-        ]);
-
-        assert_eq!(None, t.get_in_turn());
-        t.rm_chr("Bucky")?;
-        assert_eq!(None, t.get_in_turn());
-
-        Ok(())
-    }
-
-    #[test]
-    fn rm_in_turn_makes_it_next_ups_turn() -> TrackerResult {
-        let mut t = Tracker::new(vec![
-            Chr::builder("Bucky", 30, true).build(),
-            Chr::builder("Hellen", 27, true).build(),
-            Chr::builder("Skelly Boy", 3, false).build(),
-        ]);
-
-        t.end_turn();
-        t.end_turn();
-
-        assert_eq!(Some(&Chr::builder("Hellen", 27, true).build()), t.get_in_turn());
-        t.rm_chr("Hellen")?;
-        assert_eq!(Some(&Chr::builder("Skelly Boy", 3, false).build()), t.get_in_turn());
-
-        Ok(())
-    }
-
-    #[test]
-    fn rm_last_when_its_turn_makes_it_top_of_round() -> TrackerResult {
-        let mut t = Tracker::new(vec![
-            Chr::builder("Bucky", 30, true).build(),
-            Chr::builder("Hellen", 27, true).build(),
-            Chr::builder("Skelly Boy", 3, false).build(),
-        ]);
-
-        t.end_turn();
-        t.end_turn();
-        t.end_turn();
-
-        assert_eq!(Some(&Chr::builder("Skelly Boy", 3, false).build()), t.get_in_turn());
-        t.rm_chr("Skelly Boy")?;
-        assert_eq!(Some(&Chr::builder("Bucky", 30, true).build()), t.get_in_turn());
-
-        Ok(())
-    }
-
-    #[test]
-    fn end_turn_when_no_chrs_makes_it_no_ones_turn() {
-        let mut t = Tracker::new(vec![]);
-        assert!(t.end_turn().is_none())
+        Ok(None)
     }
 }

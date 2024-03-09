@@ -53,23 +53,44 @@ pub fn parse_input(input: String) -> ParseResult {
                 Ok(Command::AddChr { 
                     name, 
                     init,  
-                    player: true, 
+                    player: map.get::<PlayerArg>().map(|x| x.0).unwrap_or(false), 
                     dex: map.get::<DexArg>().map(|x| x.0),
                     health: map.get::<HealthArg>().map(|x| x.0)
                 })
             },
-            _ => Err(Error::InvalidNumberOfArgs(args.len(), "add".into()))
-        },
+            _ => Err(Error::InvalidNumberOfArgs(args.len(), "add".into())) },
         "rm" => {
             let name = args.iter().intersperse(&" ").fold(String::new(), |x, y| x + y);
-            Ok(Command::RmChr { name })
+            Ok(Command::RmChr { name }) }
+        "mod" => {
+            let name = args.iter().intersperse(&" ").fold(String::new(), |x, y| x + y);
+
+            let mut map = AnyMap::new();
+
+            for opt in opts {
+                parse_extra_arg(&mut map, opt)?
+            }
+
+            
+            Ok(Command::Mod {
+                name,
+                new_name: map.get::<NameArg>().map(|x| x.0.clone()),
+                init: map.get::<InitArg>().map(|x| x.0),
+                player: map.get::<PlayerArg>().map(|x| x.0),
+                dex: map.get::<DexArg>().map(|x| x.0),
+                health: map.get::<HealthArg>().map(|x| x.0),
+            })
         }
+
         word => Err(Error::InvalidKeyWord(word.to_string()))
     }
 }
 
 struct HealthArg(u32);
 struct DexArg(i32);
+struct NameArg(String);
+struct InitArg(i32);
+struct PlayerArg(bool);
 
 #[derive(Debug, Error)]
 pub enum ExtraArgError {
@@ -79,7 +100,14 @@ pub enum ExtraArgError {
         val: String,
         #[source]
         source: std::num::ParseIntError
-    }
+    },
+    #[error("extra argument `{typ}` expected a boolean but was given `{val}`.")]
+    ParseBoolError {
+        typ: String,
+        val: String,
+        #[source]
+        source: std::str::ParseBoolError
+    },
 }
 
 type ExtraArgResult = Result<(), ExtraArgError>;
@@ -95,6 +123,27 @@ fn parse_extra_arg(map: &mut AnyMap, opt: &&str) -> ExtraArgResult {
             let x: u32 = x.parse().map_err(|err| ExtraArgError::ParseIntError { typ: "-h/-health".into(), val: x.to_string(), source: err })?;
             map.insert(HealthArg(x));
         },
+        ["n", x] | ["name", x] => {
+            map.insert(NameArg(x.to_string()));
+        },
+        ["i", x] | ["init", x] => {
+            let x: i32 = x.parse().map_err(|err| ExtraArgError::ParseIntError { typ: "-i/-init".into(), val: x.to_string(), source: err })?;
+            map.insert(InitArg(x));
+        },
+        ["p", x] | ["player", x] => {
+            let x: bool = x.parse().map_err(|err| ExtraArgError::ParseBoolError { typ: "-p/-player".into(), val: x.to_string(), source: err })?;
+            map.insert(PlayerArg(x));
+        },
+        ["p"] | ["player"] => {
+            map.insert(PlayerArg(true));
+        },
+        ["e", x] | ["enemy", x] => {
+            let x: bool = x.parse().map_err(|err| ExtraArgError::ParseBoolError { typ: "-e/-enemy".into(), val: x.to_string(), source: err })?;
+            map.insert(PlayerArg(!x));
+        },
+        ["e"] | ["enemy"] => {
+            map.insert(PlayerArg(false));
+        }
         _ => ()
     }
 

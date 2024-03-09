@@ -12,8 +12,8 @@ const LINE: &str   = "-----------------------------------------------";
 const DLINE: &str  = "===============================================";
 const TITLE: &str  = "              ~~~~PATHTRACKER~~~~              ";
 const COLUMN: &str = concatcp!(
-    "   ", "Init", SPACER, "Dex", SPACER, "Name      ", SPACER,
-    "HP     ", SPACER, "Condition(s)");
+    "   ", "Init", SPACER, "Dex", SPACER, "P", SPACER, "Name      ", 
+    SPACER, "HP     ", SPACER, "Condition(s)");
 const HEADER: &str = concatcp!(
     DLINE, "\n",
     TITLE, "\n",
@@ -48,10 +48,11 @@ impl Gui for TerminalGui {
             println!("{}", PROLOG);
             for chr in t.get_chrs() {
                 println!(
-                    "{:^3}{:>4}{SPACER}{:>3}{SPACER}{:<10}{SPACER}{:>3}/{:>3}", 
+                    "{:^3}{:>4}{SPACER}{:>3}{SPACER}{:^1}{SPACER}{:<10}{SPACER}{:>3}/{:>3}", 
                     if t.get_in_turn() == Some(chr) { ">" } else { "" },
                     chr.init, 
                     chr.dex.map(|x| x.to_string()).unwrap_or("---".to_string()), 
+                    if chr.player {"*"} else {""},
                     chr.name,
                     chr.health.as_ref().map(|x| x.current.to_string()).unwrap_or("---".to_string()),
                     chr.health.as_ref().map(|x| x.max.to_string()).unwrap_or("---".to_string())
@@ -81,9 +82,7 @@ enum Command {
     AddChr { name: String, init: i32, player: bool, dex: Option<i32>, health: Option<u32> },
     RmChr { name: String },
     AddCond { name: String, level: u8 , custom: bool},
-    ModName { old: String, new: String },
-    ModDex { name: String, val: i32 },
-    ModMaxHealth { name: String, val: u32 },
+    Mod { name: String, new_name: Option<String>, init: Option<i32>, player: Option<bool>, dex: Option<i32>, health: Option<u32> },
 }
 
 fn execute_command(t: &mut Tracker, cmd: Command) -> TrackerResult {
@@ -103,9 +102,29 @@ fn execute_command(t: &mut Tracker, cmd: Command) -> TrackerResult {
         },
         Command::RmChr { name } => t.rm_chr(&name),
         Command::AddCond { name, level, custom } => todo!(),
-        Command::ModName { old, new } => todo!(),
-        Command::ModDex { name, val } => todo!(),
-        Command::ModMaxHealth { name, val } => todo!(),
+        Command::Mod { name, new_name, init, player, dex, health } => {
+            if let Some(init) = init {
+                t.change_init(&name, init)?;
+            }
+
+            if let Some(player) = player {
+                t.set_player(&name, player)?;
+            }
+
+            if let Some(dex) = dex {
+                t.change_dex(&name, dex)?;
+            }
+
+            if let Some(health) = health {
+                t.change_max_health(&name, health)?;
+            }
+
+            if let Some(new_name) = new_name {
+                t.rename(&name, new_name)?;
+            }
+
+            Ok(())
+        },
     }
 }
 
