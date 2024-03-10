@@ -1,5 +1,5 @@
-use std::{cmp::Ordering, collections::HashSet, fs::File, io::{BufReader, Read, Write}, ops::RangeBounds};
-use serde::{Serialize, Deserialize};
+use std::cmp::Ordering;
+use serde::{Deserialize, Serialize};
 
 use thiserror::Error;
 
@@ -23,14 +23,38 @@ pub enum Error {
 
 pub type TrackerResult = Result<(), Error>;
 
-#[derive(Debug)]
-#[derive(Clone)]
-#[derive(PartialEq)]
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Tracker<S: Saver> {
     chrs: Vec<Chr>,
     in_turn_index: Option<usize>,
     saver: S,
+}
+
+#[derive(Debug, Clone)]
+#[derive(PartialEq)]
+#[derive(Serialize, Deserialize)]
+struct TrackerData {
+    chrs: Vec<Chr>,
+    in_turn_index: Option<usize>,
+}
+
+impl<S: Saver> From<Tracker<S>> for TrackerData {
+    fn from(value: Tracker<S>) -> Self {
+        TrackerData {
+            chrs: value.chrs,
+            in_turn_index: value.in_turn_index,
+        }
+    }
+}
+
+impl<S: Saver> From<TrackerData> for Tracker<S> {
+    fn from(value: TrackerData) -> Self {
+        Tracker {
+            chrs: value.chrs,
+            in_turn_index: value.in_turn_index,
+            saver: S::default()
+        }
+    }
 }
 
 impl<S: Saver> Default for Tracker<S> {
@@ -46,7 +70,8 @@ pub enum MovedStatus {
     TwoTurns(Chr),
 }
 
-struct TrackerBuilder<S: Saver> {
+#[derive(Debug, Clone, PartialEq)]
+pub struct TrackerBuilder<S: Saver> {
     chrs: Vec<Chr>,
     in_turn_index: Option<usize>,
     saver: S,
@@ -54,11 +79,15 @@ struct TrackerBuilder<S: Saver> {
 
 impl<S: Saver> Default for TrackerBuilder<S> {
     fn default() -> Self {
-        TrackerBuilder { chrs: vec![], in_turn_index: None, saver: todo!() }
+        Self { chrs: vec![], in_turn_index: None, saver: S::default() }
     }
 }
 
 impl<S: Saver> TrackerBuilder<S> {
+    pub fn new(saver: S) -> Self {
+        Self { chrs: vec![], in_turn_index: None, saver }
+    }
+
     pub fn with_saver(mut self, saver: S) -> Self {
         self.saver = saver;
         self
@@ -82,8 +111,8 @@ impl<S: Saver> TrackerBuilder<S> {
 }
 
 impl<S: Saver> Tracker<S> {
-    pub fn new(chrs: impl Into<Vec<Chr>>) -> TrackerBuilder<S> {
-        TrackerBuilder::default()
+    pub fn builder() -> TrackerBuilder<S> {
+        TrackerBuilder::new(S::default())
     }
 
     pub fn get_chr(&self, name: &str) -> Option<&Chr> {
@@ -106,6 +135,7 @@ impl<S: Saver> Tracker<S> {
             Some(i) => (i + 1) % self.chrs.len(),
         });
 
+        self.auto_save().unwrap();
         self.get_in_turn()
     }
 
@@ -127,6 +157,9 @@ impl<S: Saver> Tracker<S> {
 
         self.chrs.push(chr);
         self.chrs.sort();
+
+        self.auto_save().unwrap();
+
         Ok(())
     }
     
@@ -158,6 +191,8 @@ impl<S: Saver> Tracker<S> {
             }
         }
 
+        self.auto_save().unwrap();
+
         Ok(())
     }
 
@@ -187,6 +222,7 @@ impl<S: Saver> Tracker<S> {
         self.unchecked_change(name, |chr| {
             if let Some(hp) = &mut chr.health {
                 hp.max = health;
+                hp.current = hp.current.min(health);
             } else {
                 chr.health = Some(Health::new(health));
             }
@@ -241,11 +277,14 @@ impl<S: Saver> Tracker<S> {
             }                
         }
 
+        self.auto_save().unwrap();
+
         Ok(None)
     }
 
     pub fn save(&self, file: impl Into<String>) -> TrackerResult {
-        self.saver.save(self, format!("saves/{}", file.into()));
+        let data: TrackerData = self.to_owned().into();
+        self.saver.save(&data, format!("saves/{}", file.into())).unwrap();
         Ok(())
     }
 

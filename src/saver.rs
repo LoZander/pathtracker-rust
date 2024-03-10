@@ -1,32 +1,34 @@
-use std::{fs::File, io::{BufReader, Read}};
+use std::{fs::{self, File}, io::{BufReader, BufWriter, Read, Write}};
 
 use serde::{Serialize, Deserialize};
 
 
+#[derive(Debug, Clone)]
 pub enum Error {
 
 }
 
-pub trait Saver {
-    fn save<D: Serialize, Deserialize>(&self, data: &D, dir: impl Into<String>) -> Result<(), Error>;
+pub trait Saver : Default + Clone + Sized {
+    fn save<'de, D: Serialize + Deserialize<'de>>(&self, data: &D, dir: impl Into<String>) -> Result<(), Error>;
 }
 
+#[derive(Default)]
+#[derive(Debug, Clone, Copy)]
 pub struct NoSaver;
 impl Saver for NoSaver {
-    fn save<D: Serialize, Deserialize>(&self, data: &D, dir: impl Into<String>) -> Result<(), Error> {
+    fn save<'de, D: Serialize + Deserialize<'de>>(&self, data: &D, dir: impl Into<String>) -> Result<(), Error> {
         Ok(())
     }
 }
 
+#[derive(Default)]
+#[derive(Debug, Clone, Copy)]
 pub struct FileSaver;
 impl Saver for FileSaver {
-    fn save<D: Serialize, Deserialize>(&self, data: &D, dir: impl Into<String>) -> Result<(), Error> {                
-        let file = File::open(dir.into()).unwrap();
-        let mut buf = BufReader::new(file);
+    fn save<'de, D: Serialize + Deserialize<'de>>(&self, data: &D, dir: impl Into<String>) -> Result<(), Error> {                
+        let data = serde_json::to_string_pretty(data).unwrap();
 
-        let mut data = serde_json::to_string(data).unwrap();
-
-        buf.read_to_string(&mut data).unwrap();
+        fs::write("saves/auto.save", data).unwrap();
         Ok(())
     }
 }

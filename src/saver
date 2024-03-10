@@ -1,8 +1,0 @@
-
-pub enum Error {
-    
-}
-
-pub trait Saver {
-    fn save<D: Serialize + Deserialize>(data: D, dir: Into<String>) -> Result<(), Error>
-}
