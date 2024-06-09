@@ -1,7 +1,7 @@
 use std::io;
 use const_format::concatcp;
 use thiserror::Error;
-use crate::{character::{Chr, Health}, saver::Saver, tracker::{self, Tracker, TrackerResult}};
+use crate::{character::{Chr, Health}, saver::Saver, tracker::{self, Tracker}};
 
 mod parser;
 
@@ -79,7 +79,7 @@ enum Command {
     Mod { name: String, new_name: Option<String>, init: Option<i32>, player: Option<bool>, dex: Option<i32>, health: Option<u32> },
 }
 
-fn execute_command<S: Saver>(t: &mut Tracker<S>, cmd: Command) -> TrackerResult {
+fn execute_command<S: Saver>(t: &mut Tracker<S>, cmd: Command) -> tracker::Result<()> {
     match cmd {
         Command::EndTurn => {t.end_turn(); Ok(())},
         Command::AddChr { name, init, player, dex , health} => {
