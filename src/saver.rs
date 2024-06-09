@@ -1,6 +1,6 @@
 use std::{fs, io};
 
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Serialize};
 use thiserror::Error;
 
 
@@ -25,8 +25,7 @@ pub trait Saver : Default + Clone + Sized {
     fn load<D: Serialize + DeserializeOwned>(&self, dir: impl Into<String>) -> Result<D>;
 }
 
-#[derive(Default)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct NoSaver;
 impl Saver for NoSaver {
     fn save<D: Serialize + DeserializeOwned>(&self, data: &D, dir: impl Into<String>) -> Result<()> {
@@ -38,8 +37,7 @@ impl Saver for NoSaver {
     }
 }
 
-#[derive(Default)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct FileSaver;
 impl Saver for FileSaver {
     fn save<D: Serialize + DeserializeOwned>(&self, data: &D, dir: impl Into<String>) -> Result<()> {                

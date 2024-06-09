@@ -2,9 +2,7 @@ use std::{cmp::Ordering, collections::HashSet};
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug)]
-#[derive(Clone)]
-#[derive(PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[derive(Serialize, Deserialize)]
 pub struct Health {
     pub current: u32,
@@ -26,9 +24,7 @@ impl Health {
     } 
 }
 
-#[derive(Debug)]
-#[derive(Clone)]
-#[derive(PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[derive(Hash)]
 #[derive(Serialize, Deserialize)]
 pub struct Condition {
@@ -38,9 +34,7 @@ pub struct Condition {
     pub reduction: Option<u8>,
 }
 
-#[derive(Debug)]
-#[derive(Clone)]
-#[derive(PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[derive(Hash)]
 #[derive(Serialize, Deserialize)]
 pub enum CondTrigger {
@@ -49,9 +43,7 @@ pub enum CondTrigger {
     EndOfTurn,
 }
 
-#[derive(Debug)]
-#[derive(Clone)]
-#[derive(PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[derive(Serialize, Deserialize)]
 pub struct Chr {
     pub name: String,

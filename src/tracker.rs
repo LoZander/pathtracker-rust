@@ -45,8 +45,7 @@ pub struct Tracker<S: Saver> {
     saver: S,
 }
 
-#[derive(Debug, Clone)]
-#[derive(PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 #[derive(Serialize, Deserialize)]
 struct TrackerData {
     chrs: Vec<Chr>,
@@ -78,24 +77,17 @@ impl<S: Saver> Default for Tracker<S> {
     }
 }
 
-#[derive(Debug, PartialEq)]
-#[derive(Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum MovedStatus {
     Skipped(Chr),
     TwoTurns(Chr),
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct TrackerBuilder<S: Saver> {
     chrs: Vec<Chr>,
     in_turn_index: Option<usize>,
     saver: S,
-}
-
-impl<S: Saver> Default for TrackerBuilder<S> {
-    fn default() -> Self {
-        Self { chrs: vec![], in_turn_index: None, saver: S::default() }
-    }
 }
 
 impl<S: Saver> TrackerBuilder<S> {
