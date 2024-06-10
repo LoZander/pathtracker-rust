@@ -1,12 +1,12 @@
 use pathtracker_rust::{
-	character::Chr, tracker::{self, MovedStatus, Tracker, TrackerResult}
+	character::Chr, saver::NoSaver, tracker::{self, MovedStatus, Tracker}
 };
 
 #[test]
-fn rename_renames() -> TrackerResult {
-    let mut t = Tracker::new(vec![
+fn rename_renames() -> tracker::Result<()> {
+    let mut t: Tracker<NoSaver> = Tracker::builder().with_chrs(vec![
         Chr::builder("Link", 24, true).build(),
-    ]);
+    ]).build();
 
     t.rename("Link", "Ganon")?;
 
@@ -16,11 +16,11 @@ fn rename_renames() -> TrackerResult {
 }
 
 #[test]
-fn rename_into_already_existing_fails() -> TrackerResult {
-    let mut t = Tracker::new(vec![
+fn rename_into_already_existing_fails() -> tracker::Result<()> {
+    let mut t: Tracker<NoSaver> = Tracker::builder().with_chrs(vec![
         Chr::builder("Link", 24, true).build(),
         Chr::builder("Ganon", 30, false).build(),
-    ]);
+    ]).build();
 
     let res = t.rename("Link", "Ganon");
     assert_eq!(Err(tracker::Error::RenameDuplicateError{ old: "Link".into(), new: "Ganon".into() }), res);
@@ -29,12 +29,12 @@ fn rename_into_already_existing_fails() -> TrackerResult {
 }
 
 #[test]
-fn rename_preserves_order() -> TrackerResult {
-    let mut t = Tracker::new(vec![
+fn rename_preserves_order() -> tracker::Result<()> {
+    let mut t: Tracker<NoSaver> = Tracker::builder().with_chrs(vec![
         Chr::builder("Lucifer", 24, true).build(),
         Chr::builder("Link", 24, true).build(),
         Chr::builder("Lament", 24, false).build(),
-    ]);
+    ]).build();
 
     t.rename("Link", "Ganon")?;
     assert_eq!(Some(&Chr::builder("Lucifer", 24, true).build()), t.end_turn());
@@ -45,16 +45,16 @@ fn rename_preserves_order() -> TrackerResult {
 }
 
 #[test]
-fn change_init_changes_init() -> TrackerResult {
+fn change_init_changes_init() -> tracker::Result<()> {
     let lucifer = Chr::builder("Lucifer", 24, true).build();
     let link = Chr::builder("Link", 20, true).build();
     let hugo = Chr::builder("Hugo", 10, true).build();
 
-    let mut t = Tracker::new(vec![
+    let mut t: Tracker<NoSaver> = Tracker::builder().with_chrs(vec![
         lucifer.clone(),
         link.clone(),
         hugo.clone(),
-    ]);
+    ]).build();
 
     t.change_init("Hugo", 14)?;
 
@@ -64,19 +64,16 @@ fn change_init_changes_init() -> TrackerResult {
 }
 
 #[test]
-fn change_init_preserves_sorting() -> TrackerResult {
+fn change_init_preserves_sorting() -> tracker::Result<()> {
     let lucifer = Chr::builder("Lucifer", 24, true).build();
     let link = Chr::builder("Link", 20, true).build();
     let hugo = Chr::builder("Hugo", 10, true).build();
 
-    let mut t = Tracker::new(vec![
+    let mut t: Tracker<NoSaver> = Tracker::builder().with_chrs(vec![
         lucifer.clone(),
         link.clone(),
         hugo.clone(),
-    ]);
-
-    println!("{:?}", t);
-
+    ]).build(); println!("{:?}", t);
     t.change_init("Lucifer", 19)?;
 
     assert_eq!("Link", t.end_turn().unwrap().name);
@@ -87,16 +84,16 @@ fn change_init_preserves_sorting() -> TrackerResult {
 }
 
 #[test]
-fn change_init_not_in_turn_preserves_in_turn() -> TrackerResult {
+fn change_init_not_in_turn_preserves_in_turn() -> tracker::Result<()> {
     let lucifer = Chr::builder("Lucifer", 24, true).build();
     let link = Chr::builder("Link", 20, true).build();
     let hugo = Chr::builder("Hugo", 10, true).build();
 
-    let mut t = Tracker::new(vec![
+    let mut t: Tracker<NoSaver> = Tracker::builder().with_chrs(vec![
         lucifer.clone(),
         link.clone(),
         hugo.clone(),
-    ]);
+    ]).build();
 
     t.end_turn();
     t.change_init("Link", 25)?;
@@ -107,16 +104,16 @@ fn change_init_not_in_turn_preserves_in_turn() -> TrackerResult {
 }
 
 #[test]
-fn change_init_not_in_turn_so_skipped_preserves_in_turn() -> TrackerResult {
+fn change_init_not_in_turn_so_skipped_preserves_in_turn() -> tracker::Result<()> {
     let lucifer = Chr::builder("Lucifer", 24, true).build();
     let link = Chr::builder("Link", 20, true).build();
     let hugo = Chr::builder("Hugo", 10, true).build();
 
-    let mut t = Tracker::new(vec![
+    let mut t: Tracker<NoSaver> = Tracker::builder().with_chrs(vec![
         lucifer.clone(),
         link.clone(),
         hugo.clone(),
-    ]);
+    ]).build();
 
     t.end_turn();
     t.end_turn();
@@ -129,16 +126,16 @@ fn change_init_not_in_turn_so_skipped_preserves_in_turn() -> TrackerResult {
 }
 
 #[test]
-fn change_init_not_in_turn_so_two_turns_preserves_in_turn() -> TrackerResult {
+fn change_init_not_in_turn_so_two_turns_preserves_in_turn() -> tracker::Result<()> {
     let lucifer = Chr::builder("Lucifer", 24, true).build();
     let link = Chr::builder("Link", 20, true).build();
     let hugo = Chr::builder("Hugo", 10, true).build();
 
-    let mut t = Tracker::new(vec![
+    let mut t: Tracker<NoSaver> = Tracker::builder().with_chrs(vec![
         lucifer.clone(),
         link.clone(),
         hugo.clone(),
-    ]);
+    ]).build();
 
     t.end_turn();
     t.end_turn();
@@ -151,16 +148,16 @@ fn change_init_not_in_turn_so_two_turns_preserves_in_turn() -> TrackerResult {
 }
 
 #[test]
-fn change_init_not_in_turn_so_skipped_returns_skipped() -> TrackerResult {
+fn change_init_not_in_turn_so_skipped_returns_skipped() -> tracker::Result<()> {
     let lucifer = Chr::builder("Lucifer", 24, true).build();
     let link = Chr::builder("Link", 20, true).build();
     let hugo = Chr::builder("Hugo", 10, true).build();
 
-    let mut t = Tracker::new(vec![
+    let mut t: Tracker<NoSaver> = Tracker::builder().with_chrs(vec![
         lucifer.clone(),
         link.clone(),
         hugo.clone(),
-    ]);
+    ]).build();
 
     t.end_turn();
     t.end_turn();
@@ -173,16 +170,16 @@ fn change_init_not_in_turn_so_skipped_returns_skipped() -> TrackerResult {
 }
 
 #[test]
-fn change_init_not_in_turn_so_two_turns_returns_two_turns() -> TrackerResult {
+fn change_init_not_in_turn_so_two_turns_returns_two_turns() -> tracker::Result<()> {
     let lucifer = Chr::builder("Lucifer", 24, true).build();
     let link = Chr::builder("Link", 20, true).build();
     let hugo = Chr::builder("Hugo", 10, true).build();
 
-    let mut t = Tracker::new(vec![
+    let mut t: Tracker<NoSaver> = Tracker::builder().with_chrs(vec![
         lucifer.clone(),
         link.clone(),
         hugo.clone(),
-    ]);
+    ]).build();
 
     t.end_turn();
     t.end_turn();
@@ -195,16 +192,16 @@ fn change_init_not_in_turn_so_two_turns_returns_two_turns() -> TrackerResult {
 }
 
 #[test]
-fn change_init_in_turn_wheearlier_order_changes_in_turn() -> TrackerResult {
+fn change_init_in_turn_wheearlier_order_changes_in_turn() -> tracker::Result<()> {
     let lucifer = Chr::builder("Lucifer", 24, true).build();
     let link = Chr::builder("Link", 20, true).build();
     let hugo = Chr::builder("Hugo", 10, true).build();
 
-    let mut t = Tracker::new(vec![
+    let mut t: Tracker<NoSaver> = Tracker::builder().with_chrs(vec![
         lucifer.clone(),
         link.clone(),
         hugo.clone(),
-    ]);
+    ]).build();
 
     t.end_turn();
     t.end_turn();
@@ -217,16 +214,16 @@ fn change_init_in_turn_wheearlier_order_changes_in_turn() -> TrackerResult {
 }
 
 #[test]
-fn change_init_in_turn_when_earlier_order_changes_in_turn() -> TrackerResult {
+fn change_init_in_turn_when_earlier_order_changes_in_turn() -> tracker::Result<()> {
     let lucifer = Chr::builder("Lucifer", 24, true).build();
     let link = Chr::builder("Link", 20, true).build();
     let hugo = Chr::builder("Hugo", 10, true).build();
 
-    let mut t = Tracker::new(vec![
+    let mut t: Tracker<NoSaver> = Tracker::builder().with_chrs(vec![
         lucifer.clone(),
         link.clone(),
         hugo.clone(),
-    ]);
+    ]).build();
 
     t.end_turn();
     t.end_turn();
@@ -239,10 +236,10 @@ fn change_init_in_turn_when_earlier_order_changes_in_turn() -> TrackerResult {
 }
 
 #[test]
-fn set_player_can_make_player() -> TrackerResult {
+fn set_player_can_make_player() -> tracker::Result<()> {
     let barbosa = Chr::builder("Barbosa", 23, true).build();
 
-    let mut t = Tracker::new(vec![barbosa.clone()]);
+    let mut t: Tracker<NoSaver> = Tracker::builder().with_chrs(vec![barbosa.clone()]).build();
 
     assert!(t.get_chr("Barbosa").unwrap().player);
     t.set_player("Barbosa", false)?;
@@ -252,10 +249,10 @@ fn set_player_can_make_player() -> TrackerResult {
 }
 
 #[test]
-fn set_player_can_make_enemy() -> TrackerResult {
+fn set_player_can_make_enemy() -> tracker::Result<()> {
     let barbosa = Chr::builder("Barbosa", 23, false).build();
 
-    let mut t = Tracker::new(vec![barbosa.clone()]);
+    let mut t: Tracker<NoSaver> = Tracker::builder().with_chrs(vec![barbosa.clone()]).build();
 
     assert!(!t.get_chr("Barbosa").unwrap().player);
     t.set_player("Barbosa", true)?;

@@ -1,8 +1,7 @@
 use std::io;
 use const_format::concatcp;
 use thiserror::Error;
-use crate::{character::{Chr, Health}, tracker::{self, Tracker, TrackerResult}};
-use super::Gui;
+use crate::{character::{Chr, Health}, saver::Saver, tracker::{self, Tracker}};
 
 mod parser;
 
@@ -37,43 +36,38 @@ pub enum Error {
 
 pub struct TerminalGui;
 
-impl Gui for TerminalGui {
-    type Err = Error;
+pub fn run<S: Saver>(mut t: Tracker<S>) -> super::GuiResult<Error> {
+    let mut buff = String::new();
+    let stdin = io::stdin();
+    let mut error: Option<Error> = None;
+    loop {
+        println!("{}", PROLOG);
+        for chr in t.get_chrs() {
+            println!(
+                "{:^3}{:>4}{SPACER}{:>3}{SPACER}{:^1}{SPACER}{:<10}{SPACER}{:>3}/{:>3}", 
+                if t.get_in_turn() == Some(chr) { ">" } else { "" },
+                chr.init, 
+                chr.dex.map(|x| x.to_string()).unwrap_or("---".to_string()), 
+                if chr.player {"*"} else {""},
+                chr.name,
+                chr.health.as_ref().map(|x| x.current.to_string()).unwrap_or("---".to_string()),
+                chr.health.as_ref().map(|x| x.max.to_string()).unwrap_or("---".to_string())
+            )
+        }
+        println!("{}", EPILOG);
 
-    fn run(mut t: Tracker) -> super::GuiResult<Self::Err> {
-        let mut buff = String::new();
-        let stdin = io::stdin();
-        let mut error: Option<Self::Err> = None;
-        loop {
-            println!("{}", PROLOG);
-            for chr in t.get_chrs() {
-                println!(
-                    "{:^3}{:>4}{SPACER}{:>3}{SPACER}{:^1}{SPACER}{:<10}{SPACER}{:>3}/{:>3}", 
-                    if t.get_in_turn() == Some(chr) { ">" } else { "" },
-                    chr.init, 
-                    chr.dex.map(|x| x.to_string()).unwrap_or("---".to_string()), 
-                    if chr.player {"*"} else {""},
-                    chr.name,
-                    chr.health.as_ref().map(|x| x.current.to_string()).unwrap_or("---".to_string()),
-                    chr.health.as_ref().map(|x| x.max.to_string()).unwrap_or("---".to_string())
-                )
-            }
-            println!("{}", EPILOG);
-
-            if let Some(err) = error.as_ref() {
-                println!("Error: {}", err);
-                error = None;
-            }
-
-            stdin.read_line(&mut buff)?;
-            let res: Result<_, Self::Err> = parser::parse_input(std::mem::take(&mut buff)).map_err(Into::into)
-                .and_then(|cmd| execute_command(&mut t, cmd).map_err(Into::into));
-
-            if let Err(err) = res {
-                error = Some(err)
-            }
+        if let Some(err) = error.as_ref() {
+            println!("Error: {}", err);
+            error = None;
         }
 
+        stdin.read_line(&mut buff)?;
+        let res: Result<_, Error> = parser::parse_input(std::mem::take(&mut buff)).map_err(Into::into)
+            .and_then(|cmd| execute_command(&mut t, cmd).map_err(Into::into));
+
+        if let Err(err) = res {
+            error = Some(err)
+        }
     }
 }
 
@@ -85,7 +79,7 @@ enum Command {
     Mod { name: String, new_name: Option<String>, init: Option<i32>, player: Option<bool>, dex: Option<i32>, health: Option<u32> },
 }
 
-fn execute_command(t: &mut Tracker, cmd: Command) -> TrackerResult {
+fn execute_command<S: Saver>(t: &mut Tracker<S>, cmd: Command) -> tracker::Result<()> {
     match cmd {
         Command::EndTurn => {t.end_turn(); Ok(())},
         Command::AddChr { name, init, player, dex , health} => {

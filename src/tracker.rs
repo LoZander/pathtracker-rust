@@ -1,11 +1,11 @@
-use std::{cmp::Ordering, collections::HashSet, ops::RangeBounds};
+use std::cmp::Ordering;
+use serde::{Deserialize, Serialize};
 
 use thiserror::Error;
 
-use crate::character::{Chr, Health};
+use crate::{character::{Chr, Health}, saver::{self, Saver}};
 
 #[derive(Debug, Error)]
-#[derive(PartialEq)]
 pub enum Error {
     #[error("cannot add character with name `{0}` as there is already a character with this name.")]
     AddDuplicateError(String),
@@ -17,40 +17,109 @@ pub enum Error {
     ChangeNonexistentError(String),
 
     #[error("cannot rename `{old}` into `{new}` as there is already a character with this name.")]
-    RenameDuplicateError { old: String, new: String }
+    RenameDuplicateError { old: String, new: String },
+
+    #[error("load error: `{0}`")]
+    LoadError(#[from] saver::Error)
 }
 
-pub type TrackerResult = Result<(), Error>;
+impl PartialEq for Error {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Error::AddDuplicateError(x), Error::AddDuplicateError(y)) => x == y,
+            (Error::RmNonexistentError(x), Error::RmNonexistentError(y)) => x == y,
+            (Error::ChangeNonexistentError(x), Error::ChangeNonexistentError(y)) => x == y,
+            (Error::RenameDuplicateError { old: old1, new: new1 }, Error::RenameDuplicateError { old: old2, new: new2 }) => old1 == old2 && new1 == new2,
+            (Error::LoadError(_), Error::LoadError(_)) => true,
+            _ => false
+        }
+    }
+}
 
-#[derive(Debug)]
-#[derive(Clone)]
-#[derive(PartialEq)]
-pub struct Tracker {
+pub type Result<T> = std::result::Result<T, Error>;
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Tracker<S: Saver> {
+    chrs: Vec<Chr>,
+    in_turn_index: Option<usize>,
+    saver: S,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize)]
+struct TrackerData {
     chrs: Vec<Chr>,
     in_turn_index: Option<usize>,
 }
 
-impl Default for Tracker {
-    fn default() -> Self {
-        Tracker::new(vec![])
+impl<S: Saver> From<Tracker<S>> for TrackerData {
+    fn from(value: Tracker<S>) -> Self {
+        TrackerData {
+            chrs: value.chrs,
+            in_turn_index: value.in_turn_index,
+        }
     }
 }
 
-#[derive(Debug, PartialEq)]
-#[derive(Clone)]
+impl<S: Saver> From<TrackerData> for Tracker<S> {
+    fn from(value: TrackerData) -> Self {
+        Tracker {
+            chrs: value.chrs,
+            in_turn_index: value.in_turn_index,
+            saver: S::default()
+        }
+    }
+}
+
+impl<S: Saver> Default for Tracker<S> {
+    fn default() -> Self {
+        TrackerBuilder::default().build()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum MovedStatus {
     Skipped(Chr),
     TwoTurns(Chr),
 }
 
-impl Tracker {
-    pub fn new(chrs: impl Into<Vec<Chr>>) -> Self {
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct TrackerBuilder<S: Saver> {
+    chrs: Vec<Chr>,
+    in_turn_index: Option<usize>,
+    saver: S,
+}
+
+impl<S: Saver> TrackerBuilder<S> {
+    pub fn new(saver: S) -> Self {
+        Self { chrs: vec![], in_turn_index: None, saver }
+    }
+
+    pub fn with_saver(mut self, saver: S) -> Self {
+        self.saver = saver;
+        self
+    }
+
+    pub fn with_chrs(mut self, chrs: impl Into<Vec<Chr>>) -> Self {
         let mut chrs: Vec<Chr> = chrs.into();
         chrs.sort();
+        self.chrs = chrs;
+        self
+    }
+
+    pub fn build(self) -> Tracker<S> {
+
         Tracker {
-            chrs,
-            in_turn_index: None
+            chrs: self.chrs,
+            in_turn_index: self.in_turn_index,
+            saver: self.saver,
         }
+    }
+}
+
+impl<S: Saver> Tracker<S> {
+    pub fn builder() -> TrackerBuilder<S> {
+        TrackerBuilder::new(S::default())
     }
 
     pub fn get_chr(&self, name: &str) -> Option<&Chr> {
@@ -66,13 +135,17 @@ impl Tracker {
     }
 
     pub fn end_turn(&mut self) -> Option<&Chr> {
-        if self.chrs.is_empty() { return self.get_in_turn() }
+        if self.chrs.is_empty() { 
+            self.auto_save().unwrap();
+            return self.get_in_turn() 
+        }
 
         self.in_turn_index = Some(match self.in_turn_index {
             None => 0,
             Some(i) => (i + 1) % self.chrs.len(),
         });
 
+        self.auto_save().unwrap();
         self.get_in_turn()
     }
 
@@ -80,7 +153,7 @@ impl Tracker {
         self.in_turn_index.and_then(|i| self.chrs.get(i))
     }
 
-    pub fn add_chr(&mut self, chr: Chr) -> TrackerResult {
+    pub fn add_chr(&mut self, chr: Chr) -> Result<()> {
         if self.get_chr(&chr.name).is_some() { 
             return Err(Error::AddDuplicateError(chr.name))
             // return Err(format!("Cannot add character {:?} since there is already a character by this name.", chr)) 
@@ -94,10 +167,13 @@ impl Tracker {
 
         self.chrs.push(chr);
         self.chrs.sort();
+
+        self.auto_save().unwrap();
+
         Ok(())
     }
     
-    pub fn rm_chr(&mut self, name: &str) -> TrackerResult {
+    pub fn rm_chr(&mut self, name: &str) -> Result<()> {
         let rm_index = self.chrs.iter()
             .position(|chr| chr.name == name)
             .ok_or(Error::RmNonexistentError(name.to_string()))?;
@@ -106,6 +182,7 @@ impl Tracker {
 
         if self.chrs.is_empty() {
             self.in_turn_index = None;
+            self.auto_save().unwrap();
             return Ok(())
         } 
 
@@ -125,10 +202,12 @@ impl Tracker {
             }
         }
 
+        self.auto_save().unwrap();
+
         Ok(())
     }
 
-    pub fn rename(&mut self, old: &str, new: impl Into<String>) -> TrackerResult {
+    pub fn rename(&mut self, old: &str, new: impl Into<String>) -> Result<()> {
         let new: String = new.into();
 
         if self.chrs.iter().any(|chr| chr.name == new) {
@@ -138,22 +217,23 @@ impl Tracker {
         self.unchecked_change(old, |chr| { chr.name = new; Ok(()) })
     }
 
-    pub fn change_dex(&mut self, name: &str, dex: i32) -> Result<Option<MovedStatus>, Error> {
+    pub fn change_dex(&mut self, name: &str, dex: i32) -> Result<Option<MovedStatus>> {
         self.change(name, |chr| { chr.dex = Some(dex); Ok(()) })
     }
 
-    pub fn change_init(&mut self, name: &str, init: i32) -> Result<Option<MovedStatus>, Error> {
+    pub fn change_init(&mut self, name: &str, init: i32) -> Result<Option<MovedStatus>> {
         self.change(name, |chr| { chr.init = init; Ok(()) })        
     }
 
-    pub fn set_player(&mut self, name: &str, player: bool) -> TrackerResult {
+    pub fn set_player(&mut self, name: &str, player: bool) -> Result<()> {
         self.unchecked_change(name, |chr| { chr.player = player; Ok(()) })
     }
 
-    pub fn change_max_health(&mut self, name: &str, health: u32) -> TrackerResult {
+    pub fn change_max_health(&mut self, name: &str, health: u32) -> Result<()> {
         self.unchecked_change(name, |chr| {
             if let Some(hp) = &mut chr.health {
                 hp.max = health;
+                hp.current = hp.current.min(health);
             } else {
                 chr.health = Some(Health::new(health));
             }
@@ -161,21 +241,22 @@ impl Tracker {
         })
     }
 
-    pub fn damage(&mut self, name: &str, damage: u32) -> TrackerResult {
+    pub fn damage(&mut self, name: &str, damage: u32) -> Result<()> {
         self.unchecked_change(name, |chr| { chr.damage(damage); Ok(()) })
     }
 
-    pub fn heal(&mut self, name: &str, heal: u32) -> TrackerResult {
+    pub fn heal(&mut self, name: &str, heal: u32) -> Result<()> {
         self.unchecked_change(name, |chr| { chr.heal(heal); Ok(()) })
     }
 
-    fn unchecked_change<F>(&mut self, name: &str, f: F) -> TrackerResult where
-        F: FnOnce(&mut Chr) -> TrackerResult
+    fn unchecked_change<F>(&mut self, name: &str, f: F) -> Result<()> where
+        F: FnOnce(&mut Chr) -> Result<()>
     {
         for chr in &mut self.chrs {
             if chr.name == name {
                 return f(chr).and({
                     self.chrs.sort();
+                    self.auto_save().unwrap();
                     Ok(())
                 })
             }
@@ -184,8 +265,8 @@ impl Tracker {
         Err(Error::ChangeNonexistentError(name.into()))
     }
 
-    fn change<F>(&mut self, name: &str, f: F) -> Result<Option<MovedStatus>, Error> where
-        F: FnOnce(&mut Chr) -> TrackerResult
+    fn change<F>(&mut self, name: &str, f: F) -> Result<Option<MovedStatus>> where
+        F: FnOnce(&mut Chr) -> Result<()>
     {
         let before = self.pos(name).ok_or(Error::ChangeNonexistentError(name.into()))?;
         let in_turn = self.in_turn_index;
@@ -209,5 +290,23 @@ impl Tracker {
         }
 
         Ok(None)
+    }
+
+    pub fn save(&self, file: impl Into<String>) -> Result<()> {
+        let data: TrackerData = self.to_owned().into();
+        self.saver.save(&data, format!("saves/{}", file.into())).unwrap();
+        Ok(())
+    }
+
+    fn auto_save(&self) -> Result<()> {
+        self.save("auto.save").unwrap();
+        Ok(())
+    }
+
+    pub fn load(saver: S, file: impl Into<String>) -> Result<Self> {
+        let data: TrackerData = saver.load(format!("saves/{}", file.into()))?;
+        let t: Tracker<S> = data.into();
+
+        Ok(t)
     }
 }
