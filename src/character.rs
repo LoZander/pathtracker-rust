@@ -1,6 +1,8 @@
-use std::{cmp::Ordering, collections::HashSet};
+use std::cmp::Ordering;
 
 use serde::{Deserialize, Serialize};
+
+use crate::conditions::{CondManager, CondTrigger, Condition};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[derive(Serialize, Deserialize)]
@@ -25,31 +27,12 @@ impl Health {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-#[derive(Hash)]
-#[derive(Serialize, Deserialize)]
-pub struct Condition {
-    pub name: String,
-    pub level: u8,
-    pub trigger: CondTrigger,
-    pub reduction: Option<u8>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[derive(Hash)]
-#[derive(Serialize, Deserialize)]
-pub enum CondTrigger {
-    Manual,
-    StartOfTurn,
-    EndOfTurn,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
 #[derive(Serialize, Deserialize)]
 pub struct Chr {
     pub name: String,
     pub init: i32,
     pub player: bool,
-    pub conds: HashSet<Condition>,
+    pub conds: CondManager,
     pub dex: Option<i32>,
     pub health: Option<Health>,
 }
@@ -78,25 +61,15 @@ impl Chr {
     }
 
     pub fn add_condition(&mut self, cond: Condition) -> bool {
-        self.conds.insert(cond)
+        self.conds.add(cond)
     }
 
     pub fn rm_condition(&mut self, cond_name: impl Into<String>) {
-        let cond_name: String = cond_name.into();
-        self.conds.retain(|cond| cond.name != cond_name)
+        self.conds.remove(cond_name)
     }
 
     pub fn handle_cond_trigger(&mut self, trigger: CondTrigger) {
-        self.conds = self.conds.clone().into_iter()
-            .map(|cond| {
-                if cond.trigger != trigger { return cond }
-                match cond.reduction {
-                    Some(amount) => Condition { level: cond.level - amount, ..cond },
-                    None => Condition { level: 0, ..cond },
-                }
-            })
-            .filter(|cond| cond.level > 0)
-            .collect()
+        self.conds.handle_cond_trigger(trigger)
     }
 
     pub fn heal(&mut self, x: u32) -> bool {
@@ -140,7 +113,7 @@ impl ChrBuilder {
             name: self.name,
             init: self.init,
             player: self.player,
-            conds: HashSet::new(),
+            conds: CondManager::new(),
             dex: self.dex,
             health: self.health,
         }
