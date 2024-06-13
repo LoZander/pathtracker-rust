@@ -2,7 +2,7 @@ use std::cmp::Ordering;
 
 use serde::{Deserialize, Serialize};
 
-use crate::conditions::{CondManager, CondTrigger, Condition};
+use crate::conditions::{ConditionManager, CondTrigger, Condition};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[derive(Serialize, Deserialize)]
@@ -32,7 +32,7 @@ pub struct Chr {
     pub name: String,
     pub init: i32,
     pub player: bool,
-    pub conds: CondManager,
+    pub conds: ConditionManager,
     pub dex: Option<i32>,
     pub health: Option<Health>,
 }
@@ -58,18 +58,6 @@ impl Ord for Chr {
 impl Chr {
     pub fn builder(name: impl Into<String>, init: i32, player: bool) -> ChrBuilder {
         ChrBuilder::new(name, init, player)
-    }
-
-    pub fn add_condition(&mut self, cond: Condition) -> bool {
-        self.conds.add(cond)
-    }
-
-    pub fn rm_condition(&mut self, cond_name: impl Into<String>) {
-        self.conds.remove(cond_name)
-    }
-
-    pub fn handle_cond_trigger(&mut self, trigger: CondTrigger) {
-        self.conds.handle_cond_trigger(trigger)
     }
 
     pub fn heal(&mut self, x: u32) -> bool {
@@ -113,7 +101,7 @@ impl ChrBuilder {
             name: self.name,
             init: self.init,
             player: self.player,
-            conds: CondManager::new(),
+            conds: ConditionManager::new(),
             dex: self.dex,
             health: self.health,
         }
