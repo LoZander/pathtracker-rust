@@ -1,83 +1,111 @@
-use std::{collections::{HashMap, HashSet}, hash::Hash};
 use serde::{Deserialize, Serialize};
+use std::{collections::HashSet, hash::Hash};
 
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-#[derive(Deserialize, Serialize)]
+use crate::duration::Duration;
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize, Serialize)]
 pub struct ConditionManager {
-    cond_map: HashMap<String, HashSet<Condition>>
+    conds: HashSet<Condition>,
 }
 
 impl ConditionManager {
     pub fn new() -> Self {
-        ConditionManager { cond_map: HashMap::new() }
+        ConditionManager {
+            conds: HashSet::new(),
+        }
     }
-    pub fn add(&mut self, character: &str, cond: Condition) {
-        match self.cond_map.get_mut(character) {
-            None => { self.cond_map.insert(character.to_string(), HashSet::from([cond])); },
-            Some(conds) => { conds.insert(cond); }
+    pub fn add(&mut self, cond: Condition) {
+        let current = self.conds.get(&cond);
+
+        if let Some(current) = current {
+            if current.level < cond.level {
+                self.conds.insert(cond);
+            }
+        } else {
+            self.conds.insert(cond);
         }
     }
 
-    pub fn remove(&mut self, character: &str, cond_name: &str) {
-        let cond_name: String = cond_name.into();
-        if let Some(conds) = self.cond_map
-            .get_mut(character) { conds.retain(|cond| cond.name != cond_name) }
+    pub fn remove(&mut self, affected: &str, cond_name: &str) {
+        self.conds
+            .retain(|cond| cond.name != cond_name || cond.affected != affected)
     }
 
-    pub fn get<'a>(&'a self, character: &str) -> Option<&'a HashSet<Condition>> {
-        self.cond_map.get(character)
+    pub fn get<'a>(&'a self, character: &str) -> HashSet<&'a Condition> {
+        self.conds
+            .iter()
+            .filter(|cond| cond.affected == character)
+            .collect()
     }
 
-    pub fn handle_cond_trigger(&mut self, character: &str, trigger: CondTrigger) {
-        self.cond_map = self.cond_map.values().map(|conds| {
-            let filtered_conds: HashSet<Condition> = conds.clone()
-                .into_iter()
-                .filter_map(cond_filter(trigger.clone()))
-                .collect();
+    pub fn handle_cond_trigger(&mut self, trigger: CondTrigger) {
+        let new_conds = self
+            .conds
+            .clone()
+            .into_iter()
+            .filter_map(|cond| match cond.cond_type {
+                ConditionType::TimeBased(dur) => match trigger {
+                    CondTrigger::EndOfTurn(_) => {
+                        let new_dur = dur.saturating_sub(Duration::from_turns(1));
+                        Some(Condition {
+                            cond_type: ConditionType::TimeBased(new_dur),
+                            ..cond
+                        })
+                    }
+                    _ => Some(cond),
+                },
+                ConditionType::ReductionBased { reduction } => {
+                    if cond.trigger == trigger {
+                        println!("!!!");
+                        reduction.map(|r| Condition {
+                            level: cond.level.saturating_sub(r),
+                            ..cond
+                        })
+                    } else {
+                        println!("OH NO");
+                        Some(cond)
+                    }
+                }
+            })
+            .collect();
 
-            (character.to_string(), filtered_conds)
-        }).collect();
+        self.conds = new_conds
     }
-
 }
 
-fn cond_filter(trigger: CondTrigger) -> impl FnMut(Condition) -> Option<Condition> {
-    move |cond: Condition| {   
-        match cond.clone() {
-            Condition { trigger : t, .. } if t != trigger => Some(cond),
-            Condition { reduction : None, .. } => None,
-            Condition { reduction : Some(amount), level, .. } => 
-                Some(Condition { level: level.saturating_sub(amount), ..cond })
-        }
-    }
-}
-
-#[derive(Debug, Clone, Eq)]
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Condition {
     pub name: String,
+    pub affected: String,
     pub level: u8,
+    pub cond_type: ConditionType,
     pub trigger: CondTrigger,
-    pub reduction: Option<u8>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ConditionType {
+    TimeBased(Duration),
+    ReductionBased { reduction: Option<u8> },
 }
 
 impl Hash for Condition {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        state.write(self.name.as_bytes())
+        self.name.hash(state);
+        self.affected.hash(state);
     }
 }
 
 impl PartialEq for Condition {
     fn eq(&self, other: &Self) -> bool {
-        self.name == other.name
+        self.name == other.name && self.affected == other.affected
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[derive(Hash)]
-#[derive(Serialize, Deserialize)]
+impl Eq for Condition {}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum CondTrigger {
-    Manual(String),
-    StartOfTurn,
-    EndOfTurn,
+    Manual { cond_name: String },
+    StartOfTurn(String),
+    EndOfTurn(String),
 }
