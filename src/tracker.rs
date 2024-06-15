@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use thiserror::Error;
 
-use crate::{character::{Chr, Health}, saver::{self, Saver}};
+use crate::{character::{Chr, Health}, conditions::ConditionManager, saver::{self, Saver}};
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -43,6 +43,7 @@ pub struct Tracker<S: Saver> {
     chrs: Vec<Chr>,
     in_turn_index: Option<usize>,
     saver: S,
+    cm: ConditionManager
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -50,6 +51,7 @@ pub struct Tracker<S: Saver> {
 struct TrackerData {
     chrs: Vec<Chr>,
     in_turn_index: Option<usize>,
+    cm: ConditionManager
 }
 
 impl<S: Saver> From<Tracker<S>> for TrackerData {
@@ -57,6 +59,7 @@ impl<S: Saver> From<Tracker<S>> for TrackerData {
         TrackerData {
             chrs: value.chrs,
             in_turn_index: value.in_turn_index,
+            cm: value.cm
         }
     }
 }
@@ -66,7 +69,8 @@ impl<S: Saver> From<TrackerData> for Tracker<S> {
         Tracker {
             chrs: value.chrs,
             in_turn_index: value.in_turn_index,
-            saver: S::default()
+            saver: S::default(),
+            cm: value.cm
         }
     }
 }
@@ -88,11 +92,12 @@ pub struct TrackerBuilder<S: Saver> {
     chrs: Vec<Chr>,
     in_turn_index: Option<usize>,
     saver: S,
+    cm: ConditionManager
 }
 
 impl<S: Saver> TrackerBuilder<S> {
     pub fn new(saver: S) -> Self {
-        Self { chrs: vec![], in_turn_index: None, saver }
+        Self { chrs: vec![], in_turn_index: None, saver, cm: ConditionManager::new() }
     }
 
     pub fn with_saver(mut self, saver: S) -> Self {
@@ -113,6 +118,7 @@ impl<S: Saver> TrackerBuilder<S> {
             chrs: self.chrs,
             in_turn_index: self.in_turn_index,
             saver: self.saver,
+            cm: self.cm
         }
     }
 }
@@ -135,16 +141,20 @@ impl<S: Saver> Tracker<S> {
     }
 
     pub fn end_turn(&mut self) -> Option<&Chr> {
-        if self.chrs.is_empty() { 
-            self.auto_save().unwrap();
-            return self.get_in_turn() 
+        if let Some(chr) = self.get_in_turn().cloned() {
+            self.cm.end_of_turn(&chr.name)
         }
 
-        self.in_turn_index = Some(match self.in_turn_index {
-            None => 0,
-            Some(i) => (i + 1) % self.chrs.len(),
-        });
+        if !self.chrs.is_empty() { 
+            self.in_turn_index = Some(match self.in_turn_index {
+                None => 0,
+                Some(i) => (i + 1) % self.chrs.len(),
+            });
+        }
 
+        if let Some(chr) = self.get_in_turn().cloned() {
+            self.cm.start_of_turn(&chr.name)
+        }
         self.auto_save().unwrap();
         self.get_in_turn()
     }
@@ -178,7 +188,9 @@ impl<S: Saver> Tracker<S> {
             .position(|chr| chr.name == name)
             .ok_or(Error::RmNonexistentError(name.to_string()))?;
 
-        self.chrs.remove(rm_index);
+        let removed = self.chrs.remove(rm_index);
+
+        self.cm.remove_character(&removed.name);
 
         if self.chrs.is_empty() {
             self.in_turn_index = None;
@@ -213,6 +225,8 @@ impl<S: Saver> Tracker<S> {
         if self.chrs.iter().any(|chr| chr.name == new) {
             return Err(Error::RenameDuplicateError { old: old.into(), new })
         }
+
+        self.cm.rename_character(old, new.clone());
 
         self.unchecked_change(old, |chr| { chr.name = new; Ok(()) })
     }
