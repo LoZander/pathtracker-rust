@@ -12,6 +12,12 @@ pub enum Condition {
     NonValued { cond: NonValuedCondition, term: NonValuedTerm }
 }
 
+impl Condition {
+    pub fn builder() -> ConditionBuilder {
+        ConditionBuilder::default()
+    }
+}
+
 impl PartialEq for Condition {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
@@ -140,4 +146,81 @@ pub enum DamageType {
     Evil,
     Good,
     Lawful
+}
+
+
+pub struct Empty;
+pub trait CondType {}
+
+impl CondType for ValuedCondition {}
+impl CondType for NonValuedCondition {}
+
+pub struct ConditionBuilder<Cond=Empty,Value=Empty,Term=Empty> {
+    cond: Cond,
+    value: Value,
+    term: Term
+}
+
+impl Default for ConditionBuilder<Empty,Empty,Empty> {
+    fn default() -> Self {
+        Self { cond: Empty, value: Empty, term: Empty }
+    }
+}
+
+impl ConditionBuilder<Empty,Empty,Empty> {
+    pub fn condition<Cond: CondType>(self, cond: Cond) -> ConditionBuilder<Cond,Empty,Empty> {
+        ConditionBuilder {
+            cond,
+            value: Empty,
+            term: Empty,
+        }
+    }
+}
+
+impl<Term> ConditionBuilder<NonValuedCondition,Empty,Term> {
+    pub fn term(self, term: NonValuedTerm) -> ConditionBuilder<NonValuedCondition,Empty,NonValuedTerm> {
+        ConditionBuilder {
+            cond: self.cond,
+            value: self.value,
+            term,
+        }
+    }
+}
+
+impl ConditionBuilder<NonValuedCondition,Empty,NonValuedTerm> {
+    pub fn build(self) -> Condition {
+        Condition::NonValued {
+            cond: self.cond,
+            term: self.term,
+        }
+    }
+}
+
+
+impl<Value,Term> ConditionBuilder<ValuedCondition,Value,Term> {
+    pub fn value(self, value: u8) -> ConditionBuilder<ValuedCondition,u8,Term> {
+        ConditionBuilder {
+            cond: self.cond,
+            value,
+            term: self.term
+        }
+    }
+
+    pub fn term(self, term: ValuedTerm) -> ConditionBuilder<ValuedCondition,Value,ValuedTerm> {
+        ConditionBuilder {
+            cond: self.cond,
+            value: self.value,
+            term
+        }
+    }
+}
+
+impl ConditionBuilder<ValuedCondition,u8,ValuedTerm> {
+    pub fn build(self) -> Condition {
+        Condition::Valued {
+            cond: self.cond,
+            term: self.term,
+            level: self.value,
+        }
+    }
 }

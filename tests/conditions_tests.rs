@@ -3,11 +3,11 @@ use pathtracker_rust::conditions::{condition_manager::ConditionManager, Conditio
 #[test]
 fn add_condition_adds() {
     let mut cm = ConditionManager::new();
-    let condition = Condition::Valued {
-        cond: ValuedCondition::Frightened,
-        level: 3,
-        term: ValuedTerm::Reduced(TurnEvent::EndOfTurn(String::from("bob")), 1)
-    };
+    let condition = Condition::builder()
+        .condition(ValuedCondition::Frightened)
+        .value(3)
+        .term(ValuedTerm::Reduced(TurnEvent::EndOfTurn(String::from("bob")), 1))
+        .build();
 
     cm.add_condition("bob", condition.clone());
 
