@@ -4,7 +4,7 @@ type Num = u16;
 
 #[derive(Debug, Clone, Copy, Default)]
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Hash)]
 pub struct Duration {
     seconds: Num,
     actions: Num,

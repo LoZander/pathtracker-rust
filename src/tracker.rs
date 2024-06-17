@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use thiserror::Error;
 
-use crate::{character::{Chr, Health}, conditions::ConditionManager, saver::{self, Saver}};
+use crate::{character::{Chr, Health}, conditions::condition_manager::ConditionManager, saver::{self, Saver}};
 
 #[derive(Debug, Error)]
 pub enum Error {
