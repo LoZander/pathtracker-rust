@@ -9,6 +9,8 @@ fn add_condition_adds() {
         term: ValuedTerm::Reduced(TurnEvent::EndOfTurn(String::from("bob")), 1)
     };
 
+    cm.add_condition("bob", condition.clone());
+
     assert!(cm.get_conditions("bob").contains(&condition))
 }
 
