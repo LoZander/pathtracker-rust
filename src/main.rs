@@ -1,6 +1,6 @@
 use pathtracker_rust::saver::{self, FileSaver};
 use pathtracker_rust::tracker;
-use pathtracker_rust::{character::Chr, saver::NoSaver, tracker::Tracker};
+use pathtracker_rust::tracker::Tracker;
 use pathtracker_rust::gui::terminalgui;
 
 

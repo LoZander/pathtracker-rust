@@ -24,7 +24,7 @@ impl ConditionManager {
             .get(&cond)
             .map(|current| match (current,&cond) {
                 (Condition::Valued { cond: c1, level: l1, .. }, 
-                    Condition::Valued { cond: c2, level: l2, .. }) => c1 == c2 && l1.ge(&l2),
+                    Condition::Valued { cond: c2, level: l2, .. }) => c1 == c2 && l1.ge(l2),
                 (Condition::NonValued { cond: c1, .. }, Condition::NonValued { cond: c2, .. }) => c1 == c2,
                 _ => false
             })

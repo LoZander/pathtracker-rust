@@ -8,16 +8,16 @@ use crate::{character::{Chr, Health}, conditions::condition_manager::ConditionMa
 #[derive(Debug, Error)]
 pub enum Error {
     #[error("cannot add character with name `{0}` as there is already a character with this name.")]
-    AddDuplicateError(String),
+    AddDupError(String),
 
     #[error("cannot remove a character of name `{0}` as no such character exists.")]
-    RmNonexistentError(String),
+    RmNoneError(String),
 
     #[error("cannot modify character `{0}` as no such character exists.")]
-    ChangeNonexistentError(String),
+    ChangeNoneError(String),
 
     #[error("cannot rename `{old}` into `{new}` as there is already a character with this name.")]
-    RenameDuplicateError { old: String, new: String },
+    RenameDupError { old: String, new: String },
 
     #[error("load error: `{0}`")]
     LoadError(#[from] saver::Error)
@@ -26,10 +26,12 @@ pub enum Error {
 impl PartialEq for Error {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Error::AddDuplicateError(x), Error::AddDuplicateError(y)) => x == y,
-            (Error::RmNonexistentError(x), Error::RmNonexistentError(y)) => x == y,
-            (Error::ChangeNonexistentError(x), Error::ChangeNonexistentError(y)) => x == y,
-            (Error::RenameDuplicateError { old: old1, new: new1 }, Error::RenameDuplicateError { old: old2, new: new2 }) => old1 == old2 && new1 == new2,
+            (Error::AddDupError(x), Error::AddDupError(y)) => x == y,
+            (Error::RmNoneError(x), Error::RmNoneError(y)) => x == y,
+            (Error::ChangeNoneError(x), Error::ChangeNoneError(y)) => x == y,
+            (Error::RenameDupError { old: old1, new: new1 }, 
+                Error::RenameDupError { old: old2, new: new2 }) => 
+                    old1 == old2 && new1 == new2,
             (Error::LoadError(_), Error::LoadError(_)) => true,
             _ => false
         }
@@ -165,7 +167,7 @@ impl<S: Saver> Tracker<S> {
 
     pub fn add_chr(&mut self, chr: Chr) -> Result<()> {
         if self.get_chr(&chr.name).is_some() { 
-            return Err(Error::AddDuplicateError(chr.name))
+            return Err(Error::AddDupError(chr.name))
             // return Err(format!("Cannot add character {:?} since there is already a character by this name.", chr)) 
         }
 
@@ -186,7 +188,7 @@ impl<S: Saver> Tracker<S> {
     pub fn rm_chr(&mut self, name: &str) -> Result<()> {
         let rm_index = self.chrs.iter()
             .position(|chr| chr.name == name)
-            .ok_or(Error::RmNonexistentError(name.to_string()))?;
+            .ok_or(Error::RmNoneError(name.to_string()))?;
 
         let removed = self.chrs.remove(rm_index);
 
@@ -223,7 +225,7 @@ impl<S: Saver> Tracker<S> {
         let new: String = new.into();
 
         if self.chrs.iter().any(|chr| chr.name == new) {
-            return Err(Error::RenameDuplicateError { old: old.into(), new })
+            return Err(Error::RenameDupError { old: old.into(), new })
         }
 
         self.cm.rename_character(old, new.clone());
@@ -276,13 +278,13 @@ impl<S: Saver> Tracker<S> {
             }
         }
 
-        Err(Error::ChangeNonexistentError(name.into()))
+        Err(Error::ChangeNoneError(name.into()))
     }
 
     fn change<F>(&mut self, name: &str, f: F) -> Result<Option<MovedStatus>> where
         F: FnOnce(&mut Chr) -> Result<()>
     {
-        let before = self.pos(name).ok_or(Error::ChangeNonexistentError(name.into()))?;
+        let before = self.pos(name).ok_or(Error::ChangeNoneError(name.into()))?;
         let in_turn = self.in_turn_index;
 
         self.unchecked_change(name, f)?;

@@ -23,7 +23,7 @@ fn rename_into_already_existing_fails() -> tracker::Result<()> {
     ]).build();
 
     let res = t.rename("Link", "Ganon");
-    assert_eq!(Err(tracker::Error::RenameDuplicateError{ old: "Link".into(), new: "Ganon".into() }), res);
+    assert_eq!(Err(tracker::Error::RenameDupError{ old: "Link".into(), new: "Ganon".into() }), res);
 
     Ok(())
 }
