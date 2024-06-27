@@ -95,7 +95,7 @@ fn execute_command<S: Saver>(t: &mut Tracker<S>, cmd: Command) -> tracker::Resul
             t.add_chr(builder.build())
         },
         Command::RmChr { name } => t.rm_chr(&name),
-        Command::AddCond { name, level, custom } => todo!(),
+        Command::AddCond { .. } => todo!(),
         Command::Mod { name, new_name, init, player, dex, health } => {
             if let Some(init) = init {
                 t.change_init(&name, init)?;
