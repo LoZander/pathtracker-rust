@@ -57,7 +57,11 @@ impl ConditionManager {
                     Some((affected, new_cond))
                 },
                 Condition::NonValued { term: NonValuedTerm::For(dur), cond } => {
-                    let new_cond = Condition::NonValued { term: NonValuedTerm::For(dur.saturating_sub(Duration::from_turns(1))), cond };
+                    let new_dur = dur.saturating_sub(Duration::from_turns(1));
+                    let new_cond = Condition::NonValued { 
+                        term: NonValuedTerm::For(new_dur), 
+                        cond 
+                    };
                     Some((affected, new_cond))
                 }
                 Condition::Valued { term: ValuedTerm::Until(e), .. } |
@@ -82,12 +86,11 @@ impl ConditionManager {
         self.conds.retain(|(affected, cond)| affected != character || cond != condition)
     }
 
-    pub fn rename_character(&mut self, character: &str, new_name: impl Into<String>) {
-        let new_name: String = new_name.into();
+    pub fn rename_character(&mut self, character: &str, new_name: &str) {
         let conds = self.conds.clone().into_iter()
             .map(|(affected, cond)| {
                 if affected == character {
-                    (new_name.clone(), cond)
+                    (new_name.to_owned(), cond)
                 } else {
                     (affected, cond)
                 }

@@ -228,7 +228,7 @@ impl<S: Saver> Tracker<S> {
             return Err(Error::RenameDupError { old: old.into(), new })
         }
 
-        self.cm.rename_character(old, new.clone());
+        self.cm.rename_character(old, &new);
 
         self.unchecked_change(old, |chr| { chr.name = new; Ok(()) })
     }
