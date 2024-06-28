@@ -1,6 +1,10 @@
 use anymap2::AnyMap;
 use thiserror::Error;
+
 use super::Command;
+
+mod condition_parser;
+use condition_parser as cond_parser;
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -16,21 +20,26 @@ pub enum Error {
     #[error("invalid number of args `{0}` for `{1}` command.")]
     InvalidNumberOfArgs(usize, String),
 
+    #[error("invalid condition syntax: expected `<cond> [<value>] <term> on <character>` but got `{0}`")]
+    InvalidCondSyntax(String),
+
     #[error("initiative (first arg) is expected to be a number, but provided arg `{arg}` is not.")]
-    #[allow(clippy::enum_variant_names)]
-    ParseIntError {
+    ParseInt {
         arg: String,
         #[source] source: std::num::ParseIntError,
     },
 
     #[error(transparent)]
-    InvalidExtraArg(#[from] ExtraArgError)
+    InvalidExtraArg(#[from] ExtraArgError),
+
+    #[error(transparent)]
+    CondParser(#[from] cond_parser::Error)
 }
 
 pub type ParseResult = Result<Command, Error>;
 
 pub fn parse_input(input: String) -> ParseResult {
-    let sentences: Vec<&str> = input.split(" -").collect();
+    let sentences: Vec<&str> = input.split("-").map(|s| s.trim()).collect();
     let main: &str = sentences[0];
     let opts = &sentences[1..];
 
@@ -41,8 +50,8 @@ pub fn parse_input(input: String) -> ParseResult {
         "n" => Ok(Command::EndTurn),
         "add" => match args {
             [init, name @ ..] => {
-                let init: i32 = init.parse().map_err(|err| Error::ParseIntError { arg: init.to_string(), source: err })?;
-                let name = name.iter().intersperse(&" ").fold(String::new(), |x, y| x + y);
+                let init: i32 = init.parse().map_err(|err| Error::ParseInt { arg: init.to_string(), source: err })?;
+                let name = reconstruct_name(name);
 
                 let mut map = AnyMap::new();
 
@@ -81,9 +90,17 @@ pub fn parse_input(input: String) -> ParseResult {
                 health: map.get::<HealthArg>().map(|x| x.0),
             })
         }
+        "cond" => {
+            let command = cond_parser::parse(args)?;
+            Ok(command)
+        },
 
         word => Err(Error::InvalidKeyWord(word.to_string()))
     }
+}
+
+fn reconstruct_name(name: &[&str]) -> String {
+    name.iter().intersperse(&" ").fold(String::new(), |acc, x| acc + x)
 }
 
 struct HealthArg(u32);

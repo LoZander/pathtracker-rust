@@ -1,7 +1,7 @@
 use std::io;
 use const_format::concatcp;
 use thiserror::Error;
-use crate::{character::{Chr, Health}, saver::Saver, tracker::{self, Tracker}};
+use crate::{character::{Chr, Health}, conditions::Condition, saver::Saver, tracker::{self, Tracker}};
 
 mod parser;
 
@@ -75,7 +75,7 @@ enum Command {
     EndTurn,
     AddChr { name: String, init: i32, player: bool, dex: Option<i32>, health: Option<u32> },
     RmChr { name: String },
-    AddCond { name: String, level: u8 , custom: bool},
+    AddCond { character: String, cond: Condition },
     Mod { name: String, new_name: Option<String>, init: Option<i32>, player: Option<bool>, dex: Option<i32>, health: Option<u32> },
 }
 

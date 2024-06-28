@@ -31,6 +31,18 @@ impl Duration {
             .build()
     }
 
+    pub fn from_minutes(n: Num) -> Self {
+        Self::builder()
+            .with_minutes(n)
+            .build()
+    }
+
+    pub fn from_hours(n: Num) -> Self {
+        Self::builder()
+            .with_hours(n)
+            .build()
+    }
+
     pub fn in_seconds(self) -> Num {
         self.seconds + 2 * self.in_actions()
     }
