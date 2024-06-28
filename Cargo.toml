@@ -9,3 +9,9 @@ const_format = "0.2.32"
 serde = { version = "1.0.197", features = ["derive"] }
 serde_json = "1.0.114"
 thiserror = "1.0.57"
+
+[lints.clippy]
+#pedantic = "warn"
+style = "warn"
+complexity = "warn"
+perf = "warn"

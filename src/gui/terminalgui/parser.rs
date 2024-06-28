@@ -38,8 +38,8 @@ pub enum Error {
 
 pub type ParseResult = Result<Command, Error>;
 
-pub fn parse_input(input: String) -> ParseResult {
-    let sentences: Vec<&str> = input.split("-").map(|s| s.trim()).collect();
+pub fn parse_input(input: &str) -> ParseResult {
+    let sentences: Vec<&str> = input.split('-').map(str::trim).collect();
     let main: &str = sentences[0];
     let opts = &sentences[1..];
 
@@ -50,19 +50,19 @@ pub fn parse_input(input: String) -> ParseResult {
         "n" => Ok(Command::EndTurn),
         "add" => match args {
             [init, name @ ..] => {
-                let init: i32 = init.parse().map_err(|err| Error::ParseInt { arg: init.to_string(), source: err })?;
+                let init: i32 = init.parse().map_err(|err| Error::ParseInt { arg: (*init).to_string(), source: err })?;
                 let name = reconstruct_name(name);
 
                 let mut map = AnyMap::new();
 
                 for opt in opts {
-                    parse_extra_arg(&mut map, opt)?
+                    parse_extra_arg(&mut map, opt)?;
                 }
 
                 Ok(Command::AddChr { 
                     name, 
                     init,  
-                    player: map.get::<PlayerArg>().map(|x| x.0).unwrap_or(false), 
+                    player: map.get::<PlayerArg>().is_some_and(|x| x.0), 
                     dex: map.get::<DexArg>().map(|x| x.0),
                     health: map.get::<HealthArg>().map(|x| x.0)
                 })
@@ -77,7 +77,7 @@ pub fn parse_input(input: String) -> ParseResult {
             let mut map = AnyMap::new();
 
             for opt in opts {
-                parse_extra_arg(&mut map, opt)?
+                parse_extra_arg(&mut map, opt)?;
             }
 
             
@@ -132,33 +132,33 @@ type ExtraArgResult = Result<(), ExtraArgError>;
 fn parse_extra_arg(map: &mut AnyMap, opt: &&str) -> ExtraArgResult {
     let words: Vec<&str> = opt.split_whitespace().collect();
     match &words[..] {
-        ["d", x] | ["dex", x] => {
-            let x: i32 = x.parse().map_err(|err| ExtraArgError::ParseIntError { typ: "-d/-dex".into(), val: x.to_string(), source: err })?;
+        ["d" | "dex", x] => {
+            let x: i32 = x.parse().map_err(|err| ExtraArgError::ParseIntError { typ: "-d/-dex".into(), val: (*x).to_string(), source: err })?;
             map.insert(DexArg(x));
         },
-        ["h", x] | ["health", x] => {
-            let x: u32 = x.parse().map_err(|err| ExtraArgError::ParseIntError { typ: "-h/-health".into(), val: x.to_string(), source: err })?;
+        ["h" | "health", x] => {
+            let x: u32 = x.parse().map_err(|err| ExtraArgError::ParseIntError { typ: "-h/-health".into(), val: (*x).to_string(), source: err })?;
             map.insert(HealthArg(x));
         },
-        ["n", x] | ["name", x] => {
-            map.insert(NameArg(x.to_string()));
+        ["n" | "name", x] => {
+            map.insert(NameArg((*x).to_string()));
         },
-        ["i", x] | ["init", x] => {
-            let x: i32 = x.parse().map_err(|err| ExtraArgError::ParseIntError { typ: "-i/-init".into(), val: x.to_string(), source: err })?;
+        ["i" | "init", x] => {
+            let x: i32 = x.parse().map_err(|err| ExtraArgError::ParseIntError { typ: "-i/-init".into(), val: (*x).to_string(), source: err })?;
             map.insert(InitArg(x));
         },
-        ["p", x] | ["player", x] => {
-            let x: bool = x.parse().map_err(|err| ExtraArgError::ParseBoolError { typ: "-p/-player".into(), val: x.to_string(), source: err })?;
+        ["p" | "player", x] => {
+            let x: bool = x.parse().map_err(|err| ExtraArgError::ParseBoolError { typ: "-p/-player".into(), val: (*x).to_string(), source: err })?;
             map.insert(PlayerArg(x));
         },
-        ["p"] | ["player"] => {
+        ["p" | "player"] => {
             map.insert(PlayerArg(true));
         },
-        ["e", x] | ["enemy", x] => {
-            let x: bool = x.parse().map_err(|err| ExtraArgError::ParseBoolError { typ: "-e/-enemy".into(), val: x.to_string(), source: err })?;
+        ["e" | "enemy", x] => {
+            let x: bool = x.parse().map_err(|err| ExtraArgError::ParseBoolError { typ: "-e/-enemy".into(), val: (*x).to_string(), source: err })?;
             map.insert(PlayerArg(!x));
         },
-        ["e"] | ["enemy"] => {
+        ["e" | "enemy"] => {
             map.insert(PlayerArg(false));
         }
         _ => ()

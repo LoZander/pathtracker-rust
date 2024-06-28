@@ -38,9 +38,7 @@ pub fn parse(args: &[&str]) -> Result<Command> {
 
             match cond_args {
                 [_cond_name, _value] => todo!(),
-                [cond_name, value, term_type @ "for", term_trigger @ .. ] |
-                [cond_name, value, term_type @ "until", term_trigger @ .. ] |
-                [cond_name, value, term_type @ "reduced", term_trigger @ .. ] => {
+                [cond_name, value, term_type @ ("for" | "until" | "reduced"), term_trigger @ ..] => {
                     let value: u8 = value.parse().map_err(|err| Error::ParseInt { arg: value.to_string(), source: err })?;
                     let cond_type = parse_valued_cond(cond_name)?;
                     let term = parse_valued_term(term_type, term_trigger)?;
@@ -53,8 +51,7 @@ pub fn parse(args: &[&str]) -> Result<Command> {
                     Ok(Command::AddCond { character, cond })
                 }
                 [_cond_name] => todo!(),
-                [cond_name, term_type @ "for", term_trigger @ .. ] |
-                [cond_name, term_type @ "until", term_trigger @ .. ] => {
+                [cond_name, term_type @ ("for" | "until"), term_trigger @ ..] => {
                     let cond_type = parse_nonvalued_cond(cond_name)?;
                     let term = parse_nonvalued_term(term_type, term_trigger)?;
                     let cond = Condition::builder()
