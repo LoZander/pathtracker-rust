@@ -196,6 +196,15 @@ impl ConditionBuilder<NonValuedCondition,Empty,NonValuedTerm> {
     }
 }
 
+impl ConditionBuilder<NonValuedCondition,Empty,Empty> {
+    pub fn build(self) -> Condition {
+        Condition::NonValued {
+            cond: self.cond,
+            term: NonValuedTerm::default()
+        }
+    }
+}
+
 
 impl<Value,Term> ConditionBuilder<ValuedCondition,Value,Term> {
     pub fn value(self, value: u8) -> ConditionBuilder<ValuedCondition,u8,Term> {
@@ -221,6 +230,16 @@ impl ConditionBuilder<ValuedCondition,u8,ValuedTerm> {
             cond: self.cond,
             term: self.term,
             level: self.value,
+        }
+    }
+}
+
+impl ConditionBuilder<ValuedCondition,u8,Empty> {
+    pub fn build(self) -> Condition {
+        Condition::Valued {
+            cond: self.cond,
+            term: ValuedTerm::default(),
+            level: self.value
         }
     }
 }

@@ -36,9 +36,14 @@ pub fn parse(args: &[&str]) -> Result<Command> {
             let cond_args = split.first().unwrap();
             let character = reconstruct_name(split.get(1).unwrap());
 
-            match cond_args {
-                [_cond_name, _value] => todo!(),
-                [cond_name, value, term_type @ ("for" | "until" | "reduced"), term_trigger @ ..] => {
+            match &cond_args.get(1..) {
+                Some([cond_name, value]) => {
+                    let cond_type = parse_valued_cond(cond_name)?;
+                    let value = parse_value(value)?;
+                    let cond = Condition::builder().condition(cond_type).value(value).build();
+                    Ok(Command::AddCond { character, cond })
+                },
+                Some([cond_name, value, term_type @ ("for" | "until" | "reduced"), term_trigger @ ..]) => {
                     let value: u8 = value.parse().map_err(|err| Error::ParseInt { arg: value.to_string(), source: err })?;
                     let cond_type = parse_valued_cond(cond_name)?;
                     let term = parse_valued_term(term_type, term_trigger)?;
@@ -50,8 +55,12 @@ pub fn parse(args: &[&str]) -> Result<Command> {
 
                     Ok(Command::AddCond { character, cond })
                 }
-                [_cond_name] => todo!(),
-                [cond_name, term_type @ ("for" | "until"), term_trigger @ ..] => {
+                Some([cond_name]) => {
+                    let cond_type = parse_nonvalued_cond(cond_name)?;
+                    let cond = Condition::builder().condition(cond_type).build();
+                    Ok(Command::AddCond { character, cond })
+                },
+                Some([cond_name, term_type @ ("for" | "until"), term_trigger @ ..]) => {
                     let cond_type = parse_nonvalued_cond(cond_name)?;
                     let term = parse_nonvalued_term(term_type, term_trigger)?;
                     let cond = Condition::builder()
@@ -211,4 +220,55 @@ fn parse_duration(n: &str, unit: &str) -> Result<Duration> {
     };
 
     Ok(dur)
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{conditions::{Condition, DamageType, NonValuedCondition, NonValuedTerm, TurnEvent, ValuedCondition, ValuedTerm}, gui::terminalgui::Command};
+
+    use super::parse;
+
+    #[test]
+    fn add_blinded_on_alice_parses_correctly() {
+        let input = ["add","blinded","on","Alice"];
+        let command = parse(&input).unwrap();
+        let expected = Command::AddCond {
+            character: String::from("Alice"),
+            cond: Condition::builder()
+                .condition(NonValuedCondition::Blinded)
+                .build()
+        };
+
+        assert_eq!(expected, command)
+    }
+
+    #[test]
+    fn add_bleed_5_on_alice_parses_correctly() {
+        let input = ["add","persistent:bleed","5","on","Bob"];
+        let command = parse(&input).unwrap();
+        let expected = Command::AddCond {
+            character: String::from("Bob"),
+            cond: Condition::builder()
+                .condition(ValuedCondition::PersistentDamage(DamageType::Bleed))
+                .value(5)
+                .build()
+        };
+
+        assert_eq!(expected, command)
+    }
+
+    #[test]
+    fn add_dazzled_until_end_of_bob_turn_on_alice_parses_correctly() {
+        let input = ["add","dazzled","until","end","of","Bob","turn","on","Alice"];
+        let command = parse(&input).unwrap();
+        let expected = Command::AddCond {
+            character: String::from("Alice"),
+            cond: Condition::builder()
+                .condition(NonValuedCondition::Dazzled)
+                .term(NonValuedTerm::Until(TurnEvent::EndOfTurn(String::from("Bob"))))
+                .build()
+        };
+
+        assert_eq!(expected, command)
+    }
 }

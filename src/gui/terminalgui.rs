@@ -71,6 +71,7 @@ pub fn run<S: Saver>(mut t: Tracker<S>) -> Result<(), Error> {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 enum Command {
     EndTurn,
     AddChr { name: String, init: i32, player: bool, dex: Option<i32>, health: Option<u32> },
