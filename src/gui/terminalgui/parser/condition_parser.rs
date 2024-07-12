@@ -81,70 +81,70 @@ pub fn parse(args: &[&str]) -> Result<Command> {
 }
 
 mod nonvalued_conds {
-    pub const BLINDED: &str = "blinded";
-    pub const BROKEN: &str = "broken";
-    pub const CONCEALED: &str = "concealed";
-    pub const CONFUSED: &str = "confused";
-    pub const DAZZLED: &str = "dazzled";
-    pub const DEAFENED: &str = "deafened";
-    pub const ENCUMBERED: &str = "encumbered";
-    pub const FASCINATED: &str = "fascinated";
-    pub const FATIGUED: &str = "fatigued";
-    pub const FLATFOOTED: &str = "flat-footed";
-    pub const FLEEING: &str = "fleeing";
-    pub const FRIENDLY: &str = "friendly";
-    pub const GRABBED: &str = "grabbed";
-    pub const HELPFUL: &str = "helpful";
-    pub const HIDDEN: &str = "hidden";
-    pub const HOSTILE: &str = "hostile";
-    pub const IMMOBILIZED: &str = "immobilized";
-    pub const INDIFFERENT: &str = "indifferent";
-    pub const INVISIBLE: &str = "invisible";
-    pub const OBSERVED: &str = "observed";
-    pub const PARALYZED: &str = "paralyzed";
-    pub const PETRIFIED: &str = "petrified";
-    pub const PRONE: &str = "prone";
-    pub const QUICKENED: &str = "quickened";
-    pub const RESTRAINED: &str = "restrained";
-    pub const UNCONSCIOUS: &str = "unconscious";
-    pub const UNDETECTED: &str = "undetected";
-    pub const UNFRIENDLY: &str = "unfriendly";
-    pub const UNNOTICED: &str = "unnoticed";
+    pub const BLINDED: &str         = "blinded";
+    pub const BROKEN: &str          = "broken";
+    pub const CONCEALED: &str       = "concealed";
+    pub const CONFUSED: &str        = "confused";
+    pub const DAZZLED: &str         = "dazzled";
+    pub const DEAFENED: &str        = "deafened";
+    pub const ENCUMBERED: &str      = "encumbered";
+    pub const FASCINATED: &str      = "fascinated";
+    pub const FATIGUED: &str        = "fatigued";
+    pub const FLATFOOTED: &str      = "flat-footed";
+    pub const FLEEING: &str         = "fleeing";
+    pub const FRIENDLY: &str        = "friendly";
+    pub const GRABBED: &str         = "grabbed";
+    pub const HELPFUL: &str         = "helpful";
+    pub const HIDDEN: &str          = "hidden";
+    pub const HOSTILE: &str         = "hostile";
+    pub const IMMOBILIZED: &str     = "immobilized";
+    pub const INDIFFERENT: &str     = "indifferent";
+    pub const INVISIBLE: &str       = "invisible";
+    pub const OBSERVED: &str        = "observed";
+    pub const PARALYZED: &str       = "paralyzed";
+    pub const PETRIFIED: &str       = "petrified";
+    pub const PRONE: &str           = "prone";
+    pub const QUICKENED: &str       = "quickened";
+    pub const RESTRAINED: &str      = "restrained";
+    pub const UNCONSCIOUS: &str     = "unconscious";
+    pub const UNDETECTED: &str      = "undetected";
+    pub const UNFRIENDLY: &str      = "unfriendly";
+    pub const UNNOTICED: &str       = "unnoticed";
 }
 
 #[coverage(off)]
 pub fn parse_nonvalued_cond(cond_name: &str) -> Result<NonValuedCondition> {
     use nonvalued_conds as conds;
     match cond_name {
-        conds::BLINDED => Ok(NonValuedCondition::Blinded),
-        conds::BROKEN => Ok(NonValuedCondition::Broken),
-        conds::CONCEALED => Ok(NonValuedCondition::Concealed),
-        conds::CONFUSED => Ok(NonValuedCondition::Confused),
-        conds::DAZZLED => Ok(NonValuedCondition::Dazzled),
-        conds::DEAFENED => Ok(NonValuedCondition::Deafened),
-        conds::ENCUMBERED => Ok(NonValuedCondition::Encumbered),
-        conds::FASCINATED => Ok(NonValuedCondition::Fascinated),
-        conds::FATIGUED => Ok(NonValuedCondition::Fatigued),
-        conds::FLATFOOTED => Ok(NonValuedCondition::FlatFooted),
-        conds::FLEEING => Ok(NonValuedCondition::Fleeing),
-        conds::FRIENDLY => Ok(NonValuedCondition::Friendly),
-        conds::GRABBED => Ok(NonValuedCondition::Grabbed),
-        conds::HELPFUL => Ok(NonValuedCondition::Helpful),
-        conds::HIDDEN => Ok(NonValuedCondition::Hidden),
-        conds::HOSTILE => Ok(NonValuedCondition::Hostile),
+        conds::BLINDED     => Ok(NonValuedCondition::Blinded),
+        conds::BROKEN      => Ok(NonValuedCondition::Broken),
+        conds::CONCEALED   => Ok(NonValuedCondition::Concealed),
+        conds::CONFUSED    => Ok(NonValuedCondition::Confused),
+        conds::DAZZLED     => Ok(NonValuedCondition::Dazzled),
+        conds::DEAFENED    => Ok(NonValuedCondition::Deafened),
+        conds::ENCUMBERED  => Ok(NonValuedCondition::Encumbered),
+        conds::FASCINATED  => Ok(NonValuedCondition::Fascinated),
+        conds::FATIGUED    => Ok(NonValuedCondition::Fatigued),
+        conds::FLATFOOTED  => Ok(NonValuedCondition::FlatFooted),
+        conds::FLEEING     => Ok(NonValuedCondition::Fleeing),
+        conds::FRIENDLY    => Ok(NonValuedCondition::Friendly),
+        conds::GRABBED     => Ok(NonValuedCondition::Grabbed),
+        conds::HELPFUL     => Ok(NonValuedCondition::Helpful),
+        conds::HIDDEN      => Ok(NonValuedCondition::Hidden),
+        conds::HOSTILE     => Ok(NonValuedCondition::Hostile),
         conds::IMMOBILIZED => Ok(NonValuedCondition::Immobilized),
         conds::INDIFFERENT => Ok(NonValuedCondition::Indifferent),
-        conds::INVISIBLE => Ok(NonValuedCondition::Invisible),
-        conds::OBSERVED => Ok(NonValuedCondition::Observed),
-        conds::PARALYZED => Ok(NonValuedCondition::Paralyzed),
-        conds::PETRIFIED => Ok(NonValuedCondition::Petrified),
-        conds::PRONE => Ok(NonValuedCondition::Prone),
-        conds::QUICKENED => Ok(NonValuedCondition::Quickened),
-        conds::RESTRAINED => Ok(NonValuedCondition::Restrained),
+        conds::INVISIBLE   => Ok(NonValuedCondition::Invisible),
+        conds::OBSERVED    => Ok(NonValuedCondition::Observed),
+        conds::PARALYZED   => Ok(NonValuedCondition::Paralyzed),
+        conds::PETRIFIED   => Ok(NonValuedCondition::Petrified),
+        conds::PRONE       => Ok(NonValuedCondition::Prone),
+        conds::QUICKENED   => Ok(NonValuedCondition::Quickened),
+        conds::RESTRAINED  => Ok(NonValuedCondition::Restrained),
         conds::UNCONSCIOUS => Ok(NonValuedCondition::Unconscious),
-        conds::UNDETECTED => Ok(NonValuedCondition::Undetected),
-        conds::UNFRIENDLY => Ok(NonValuedCondition::Unfriendly),
-        conds::UNNOTICED => Ok(NonValuedCondition::Unnoticed),
+        conds::UNDETECTED  => Ok(NonValuedCondition::Undetected),
+        conds::UNFRIENDLY  => Ok(NonValuedCondition::Unfriendly),
+        conds::UNNOTICED   => Ok(NonValuedCondition::Unnoticed),
         s => Err(Error::UndefinedNonValuedCond(s.to_string()))
     }
 }
@@ -152,54 +152,54 @@ pub fn parse_nonvalued_cond(cond_name: &str) -> Result<NonValuedCondition> {
 mod valued_conds {
     use const_format::concatcp;
 
-    pub const CLUMSY: &str = "clumsy";
-    pub const DOOMED: &str = "doomed";
-    pub const DRAINED: &str = "drained";
-    pub const DYING: &str = "dying";
-    pub const ENFEEBLED: &str = "enfeebled";
-    pub const FRIGHTENED: &str = "frightened";
-    pub const SICKENED: &str = "sickened";
-    pub const SLOWED: &str = "slowed";
-    pub const STUNNED: &str = "stunned";
-    pub const STUPIFIED: &str = "stupified";
-    pub const WOUNDED: &str = "wounded";
+    pub const CLUMSY: &str         = "clumsy";
+    pub const DOOMED: &str         = "doomed";
+    pub const DRAINED: &str        = "drained";
+    pub const DYING: &str          = "dying";
+    pub const ENFEEBLED: &str      = "enfeebled";
+    pub const FRIGHTENED: &str     = "frightened";
+    pub const SICKENED: &str       = "sickened";
+    pub const SLOWED: &str         = "slowed";
+    pub const STUNNED: &str        = "stunned";
+    pub const STUPIFIED: &str      = "stupified";
+    pub const WOUNDED: &str        = "wounded";
 
-    pub const PERSISTENT: &str = "persistent";
-    pub const SEP: &str = ":";
+    pub const PERSISTENT: &str     = "persistent";
+    pub const SEP: &str            = ":";
 
-    pub const BLEED: &str = "bleed";
-    pub const POISON: &str = "poison";
-    pub const PIERCING: &str = "piercing";
-    pub const BLUDGEONING: &str = "bludgeoning";
-    pub const SLASHING: &str = "slashing";
-    pub const ACID: &str = "acid";
-    pub const COLD: &str = "cold";
-    pub const ELECTRICITY: &str = "electricity";
-    pub const SONIC: &str = "sonic";
-    pub const POSITIVE: &str = "positive";
-    pub const NEGATIVE: &str = "negative";
-    pub const FORCE: &str = "force";
-    pub const CHAOTIC: &str = "chaotic";
-    pub const EVIL: &str = "evil";
-    pub const GOOD: &str = "good";
-    pub const LAWFUL: &str = "lawful";
+    pub const BLEED: &str          = "bleed";
+    pub const POISON: &str         = "poison";
+    pub const PIERCING: &str       = "piercing";
+    pub const BLUDGEONING: &str    = "bludgeoning";
+    pub const SLASHING: &str       = "slashing";
+    pub const ACID: &str           = "acid";
+    pub const COLD: &str           = "cold";
+    pub const ELECTRICITY: &str    = "electricity";
+    pub const SONIC: &str          = "sonic";
+    pub const POSITIVE: &str       = "positive";
+    pub const NEGATIVE: &str       = "negative";
+    pub const FORCE: &str          = "force";
+    pub const CHAOTIC: &str        = "chaotic";
+    pub const EVIL: &str           = "evil";
+    pub const GOOD: &str           = "good";
+    pub const LAWFUL: &str         = "lawful";
 
-    pub const PERSISTENT_BLEED: &str = concatcp!(PERSISTENT, SEP, BLEED);
-    pub const PERSISTENT_POISON: &str = concatcp!(PERSISTENT, SEP, POISON);
-    pub const PERSISTENT_PIERCING: &str = concatcp!(PERSISTENT, SEP, PIERCING);
-    pub const PERSISTENT_BLUDGEONING: &str = concatcp!(PERSISTENT, SEP, BLUDGEONING);
-    pub const PERSISTENT_SLASHING: &str = concatcp!(PERSISTENT, SEP, SLASHING);
-    pub const PERSISTENT_ACID: &str = concatcp!(PERSISTENT, SEP, ACID);
-    pub const PERSISTENT_COLD: &str = concatcp!(PERSISTENT, SEP, COLD);
-    pub const PERSISTENT_ELECTRICITY: &str = concatcp!(PERSISTENT, SEP, ELECTRICITY);
-    pub const PERSISTENT_SONIC: &str = concatcp!(PERSISTENT, SEP, SONIC);
-    pub const PERSISTENT_POSITIVE: &str = concatcp!(PERSISTENT, SEP, POSITIVE);
-    pub const PERSISTENT_NEGATIVE: &str = concatcp!(PERSISTENT, SEP, NEGATIVE);
-    pub const PERSISTENT_FORCE: &str = concatcp!(PERSISTENT, SEP, FORCE);
-    pub const PERSISTENT_CHAOTIC: &str = concatcp!(PERSISTENT, SEP, CHAOTIC);
-    pub const PERSISTENT_EVIL: &str = concatcp!(PERSISTENT, SEP, EVIL);
-    pub const PERSISTENT_GOOD: &str = concatcp!(PERSISTENT, SEP, GOOD);
-    pub const PERSISTENT_LAWFUL: &str = concatcp!(PERSISTENT, SEP, LAWFUL);
+    pub const PERSISTENT_BLEED: &str         = concatcp!(PERSISTENT, SEP, BLEED);
+    pub const PERSISTENT_POISON: &str        = concatcp!(PERSISTENT, SEP, POISON);
+    pub const PERSISTENT_PIERCING: &str      = concatcp!(PERSISTENT, SEP, PIERCING);
+    pub const PERSISTENT_BLUDGEONING: &str   = concatcp!(PERSISTENT, SEP, BLUDGEONING);
+    pub const PERSISTENT_SLASHING: &str      = concatcp!(PERSISTENT, SEP, SLASHING);
+    pub const PERSISTENT_ACID: &str          = concatcp!(PERSISTENT, SEP, ACID);
+    pub const PERSISTENT_COLD: &str          = concatcp!(PERSISTENT, SEP, COLD);
+    pub const PERSISTENT_ELECTRICITY: &str   = concatcp!(PERSISTENT, SEP, ELECTRICITY);
+    pub const PERSISTENT_SONIC: &str         = concatcp!(PERSISTENT, SEP, SONIC);
+    pub const PERSISTENT_POSITIVE: &str      = concatcp!(PERSISTENT, SEP, POSITIVE);
+    pub const PERSISTENT_NEGATIVE: &str      = concatcp!(PERSISTENT, SEP, NEGATIVE);
+    pub const PERSISTENT_FORCE: &str         = concatcp!(PERSISTENT, SEP, FORCE);
+    pub const PERSISTENT_CHAOTIC: &str       = concatcp!(PERSISTENT, SEP, CHAOTIC);
+    pub const PERSISTENT_EVIL: &str          = concatcp!(PERSISTENT, SEP, EVIL);
+    pub const PERSISTENT_GOOD: &str          = concatcp!(PERSISTENT, SEP, GOOD);
+    pub const PERSISTENT_LAWFUL: &str        = concatcp!(PERSISTENT, SEP, LAWFUL);
 }
 
 #[coverage(off)]
@@ -263,12 +263,10 @@ pub fn parse_valued_term(term_type: &str, term_action: &[&str]) -> Result<Valued
 }
 
 fn parse_value(n: &str) -> Result<u8> {
-    let n: Result<u8> = n.parse().map_err(|err| Error::ParseInt { 
+    n.parse().map_err(|err| Error::ParseInt { 
         arg: n.to_string(), 
         source: err
-    });
-
-    n
+    })
 }
 
 fn parse_turn_event(term_action: &[&str]) -> Result<TurnEvent> {
@@ -311,7 +309,9 @@ fn parse_duration(term_action: &[&str]) -> Result<Duration> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{conditions::{Condition, DamageType, NonValuedCondition, NonValuedTerm, TurnEvent, ValuedCondition, ValuedTerm}, duration::Duration, gui::terminalgui::Command};
+    use crate::duration::Duration;
+    use crate::gui::terminalgui::Command;
+    use crate::conditions::{Condition, DamageType, NonValuedCondition, NonValuedTerm, TurnEvent, ValuedCondition, ValuedTerm};
     use super::Error;
 
     use super::parse;
