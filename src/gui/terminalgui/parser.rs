@@ -111,14 +111,14 @@ struct PlayerArg(bool);
 
 #[derive(Debug, Error)]
 pub enum ExtraArgError {
-    #[error("extra argument `{typ}` expected an integer but was given `{val}`.")]
+    #[error("extra argument `{typ}` expected an integer but was given `{val}`")]
     ParseIntError {
         typ: String,
         val: String,
         #[source]
         source: std::num::ParseIntError
     },
-    #[error("extra argument `{typ}` expected a boolean but was given `{val}`.")]
+    #[error("extra argument `{typ}` expected a boolean but was given `{val}`")]
     ParseBoolError {
         typ: String,
         val: String,
