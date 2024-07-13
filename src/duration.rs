@@ -178,31 +178,31 @@ impl RawDuration {
 
     fn normalize_seconds(self) -> Self {
         let seconds = self.seconds % 2;
-        let actions = self.seconds / 2;
+        let actions = self.actions + self.seconds / 2;
         Self { seconds, actions, ..self }
     }
 
     fn normalize_actions(self) -> Self {
         let actions = self.actions % 3;
-        let turns = self.actions / 3;
+        let turns = self.turns + self.actions / 3;
         Self { actions, turns, ..self }
     }
 
     fn normalize_turns(self) -> Self {
         let turns = self.turns % 10;
-        let minutes = self.turns / 10;
+        let minutes = self.minutes + self.turns / 10;
         Self { turns, minutes, ..self }
     }
 
     fn normalize_minutes(self) -> Self {
         let minutes = self.minutes % 60;
-        let hours = self.minutes / 60;
+        let hours = self.hours + self.minutes / 60;
         Self { minutes, hours, ..self }
     }
 
     fn normalize_hours(self) -> Self {
         let hours = self.hours % 24;
-        let days = self.hours / 24;
+        let days = self.days + self.hours / 24;
         Self { hours, days, ..self }
     }
 }
