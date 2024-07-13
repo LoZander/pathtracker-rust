@@ -206,3 +206,13 @@ impl RawDuration {
         Self { hours, days, ..self }
     }
 }
+
+#[cfg(test)]
+mod tests{
+    use super::Duration;
+
+    #[test]
+    fn duration_from_5_turns_gives_duration_of_5_turns() {
+        assert_eq!(5, Duration::from_turns(5).in_turns())
+    }
+}
