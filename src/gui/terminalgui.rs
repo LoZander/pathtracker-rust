@@ -43,15 +43,24 @@ pub fn run<S: Saver>(mut t: Tracker<S>) -> Result<(), Error> {
     loop {
         println!("{PROLOG}");
         for chr in t.get_chrs() {
+            let mut conds: Vec<String> = t.get_conditions(&chr.name).into_iter()
+                .map(ToString::to_string)
+                .collect();
+            conds.sort();
+            let conds_string = conds
+                .into_iter()
+                .intersperse(String::from(", "))
+                .fold(String::new(), |acc, cond| acc + &cond);
             println!(
-                "{:^3}{:>4}{SPACER}{:>3}{SPACER}{:^1}{SPACER}{:<10}{SPACER}{:>3}/{:>3}", 
+                "{:^3}{:>4}{SPACER}{:>3}{SPACER}{:^1}{SPACER}{:<10}{SPACER}{:>3}/{:>3}{SPACER}{}", 
                 if t.get_in_turn() == Some(chr) { ">" } else { "" },
                 chr.init, 
                 chr.dex.map_or("---".to_string(), |x| x.to_string()), 
                 if chr.player {"*"} else {""},
                 chr.name,
                 chr.health.as_ref().map_or("---".to_string(), |x| x.current.to_string()),
-                chr.health.as_ref().map_or("---".to_string(), |x| x.max.to_string())
+                chr.health.as_ref().map_or("---".to_string(), |x| x.max.to_string()),
+                conds_string
             );
         }
         println!("{EPILOG}");
@@ -96,7 +105,9 @@ fn execute_command<S: Saver>(t: &mut Tracker<S>, cmd: Command) -> tracker::Resul
             t.add_chr(builder.build())
         },
         Command::RmChr { name } => t.rm_chr(&name),
-        Command::AddCond { .. } => todo!(),
+        Command::AddCond { character, cond } => {
+            t.add_cond(&character, cond)
+        },
         Command::Mod { name, new_name, init, player, dex, health } => {
             if let Some(init) = init {
                 t.change_init(&name, init)?;

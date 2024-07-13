@@ -1,9 +1,9 @@
-use std::cmp::Ordering;
+use std::{cmp::Ordering, collections::HashSet};
 use serde::{Deserialize, Serialize};
 
 use thiserror::Error;
 
-use crate::{character::{Chr, Health}, conditions::condition_manager::ConditionManager, saver::{self, Saver}};
+use crate::{character::{Chr, Health}, conditions::{condition_manager::ConditionManager, Condition}, saver::{self, Saver}};
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -183,6 +183,20 @@ impl<S: Saver> Tracker<S> {
         self.auto_save().unwrap();
 
         Ok(())
+    }
+
+    pub fn add_cond(&mut self, name: &str, cond: Condition) -> Result<()> {
+        match self.get_chr(name) {
+            None => todo!(),
+            Some(_) => {
+                self.cm.add_condition(name, cond);
+                Ok(())
+            }
+        }
+    }
+
+    pub fn get_conditions(&self, character: &str) -> HashSet<&Condition> {
+        self.cm.get_conditions(character)
     }
     
     pub fn rm_chr(&mut self, name: &str) -> Result<()> {
