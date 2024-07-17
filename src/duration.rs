@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-type Num = u16;
+type Num = u32;
 
 #[derive(Debug, Clone, Copy, Default)]
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
@@ -20,27 +20,27 @@ impl Duration {
     }
 
     pub fn from_seconds(n: Num) -> Self {
-        Self::builder()
-            .with_seconds(n)
-            .build()
+        Self::builder().with_seconds(n).build()
+    }
+
+    pub fn from_actions(n: Num) -> Self {
+        Self::builder().with_actions(n).build()
     }
 
     pub fn from_turns(n: Num) -> Self {
-        Self::builder()
-            .with_turns(n)
-            .build()
+        Self::builder().with_turns(n).build()
     }
 
     pub fn from_minutes(n: Num) -> Self {
-        Self::builder()
-            .with_minutes(n)
-            .build()
+        Self::builder().with_minutes(n).build()
     }
 
     pub fn from_hours(n: Num) -> Self {
-        Self::builder()
-            .with_hours(n)
-            .build()
+        Self::builder().with_hours(n).build()
+    }
+
+    pub fn from_days(n: Num) -> Self {
+        Self::builder().with_days(n).build()
     }
 
     pub fn in_seconds(self) -> Num {
@@ -214,5 +214,30 @@ mod tests{
     #[test]
     fn duration_from_5_turns_gives_duration_of_5_turns() {
         assert_eq!(5, Duration::from_turns(5).in_turns())
+    }
+
+    #[test]
+    fn duration_from_1_min_gives_duration_of_30_turns() {
+        assert_eq!(10, Duration::from_minutes(1).in_turns())
+    }
+
+    #[test]
+    fn duration_from_1_turn_gives_duration_of_3_actions() {
+        assert_eq!(3, Duration::from_turns(1).in_actions())
+    }
+
+    #[test]
+    fn duration_from_6_seconds_gives_duration_of_1_turn() {
+        assert_eq!(1, Duration::from_seconds(6).in_turns())
+    }
+
+    #[test]
+    fn duration_from_1_action_gives_duration_of_2_seconds() {
+        assert_eq!(2, Duration::from_actions(1).in_seconds())
+    }
+
+    #[test]
+    fn duration_from_1_day_gives_duration_of_14_400_turns() {
+        assert_eq!(14_400, Duration::from_days(1).in_turns())
     }
 }
