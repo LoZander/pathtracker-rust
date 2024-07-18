@@ -49,7 +49,7 @@ pub fn run<S: Saver>(mut t: Tracker<S>) -> Result<(), Error> {
             conds.sort();
             let conds_string = conds
                 .into_iter()
-                .intersperse(String::from(", "))
+                .intersperse(format!("\n{:^38}", ""))
                 .fold(String::new(), |acc, cond| acc + &cond);
             println!(
                 "{:^3}{:>4}{SPACER}{:>3}{SPACER}{:^1}{SPACER}{:<10}{SPACER}{:>3}/{:>3}{SPACER}{}", 
