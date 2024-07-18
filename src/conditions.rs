@@ -78,7 +78,7 @@ pub enum NonValuedTerm {
 impl Display for NonValuedTerm {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            NonValuedTerm::Manual => write!(f, "manual"),
+            NonValuedTerm::Manual => write!(f, ""),
             NonValuedTerm::For(dur) => write!(f, "for {} turns", dur.in_turns()),
             NonValuedTerm::Until(event) => write!(f, "until {event}"),
         }
@@ -99,7 +99,7 @@ pub enum ValuedTerm {
 impl Display for ValuedTerm {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ValuedTerm::Manual => write!(f, "manual"),
+            ValuedTerm::Manual => write!(f, ""),
             ValuedTerm::For(dur) => write!(f, "for {} turns", dur.in_turns()),
             ValuedTerm::Until(event) => write!(f, "until {event}"),
             ValuedTerm::Reduced(event, r) => write!(f, "reduced by {r} at {event}"),

@@ -48,35 +48,39 @@ impl ConditionManager {
             .conds
             .clone()
             .into_iter()
-            .filter(|(affected, _)| affected == character)
-            .filter_map(|(affected,cond)| match cond {
-                Condition::Valued { term: ValuedTerm::Manual, .. } | 
-                Condition::NonValued { term: NonValuedTerm::Manual, .. } => Some((affected,cond)),
-                Condition::Valued { term: ValuedTerm::For(dur), cond, level } => {
-                    let new_cond = Condition::Valued { term: ValuedTerm::For(dur.saturating_sub(Duration::from_turns(1))), cond, level };
-                    Some((affected, new_cond))
-                },
-                Condition::NonValued { term: NonValuedTerm::For(dur), cond } => {
-                    let new_dur = dur.saturating_sub(Duration::from_turns(1));
-                    let new_cond = Condition::NonValued { 
-                        term: NonValuedTerm::For(new_dur), 
-                        cond 
-                    };
-                    Some((affected, new_cond))
+            .filter_map(|(affected, cond)| {
+                match (affected, cond) {
+                    (affected, cond) if affected != character => Some((affected, cond)),
+                    (affected, cond @ 
+                        (Condition::Valued { term: ValuedTerm::Manual, .. } | 
+                        Condition::NonValued { term: NonValuedTerm::Manual, .. })) => Some((affected, cond)),
+                    (affected, Condition::Valued { term: ValuedTerm::For(dur), cond, level }) => {
+                        let new_cond = Condition::Valued { term: ValuedTerm::For(dur.saturating_sub(Duration::from_turns(1))), cond, level };
+                        Some((affected, new_cond))
+                    },
+                    (affected, Condition::NonValued { term: NonValuedTerm::For(dur), cond }) => {
+                        let new_dur = dur.saturating_sub(Duration::from_turns(1));
+                        let new_cond = Condition::NonValued { 
+                            term: NonValuedTerm::For(new_dur), 
+                            cond 
+                        };
+                        Some((affected, new_cond))
+                    }
+                    (_, Condition::Valued { term: ValuedTerm::Until(e), .. } |
+                        Condition::NonValued { term: NonValuedTerm::Until(e), .. }) if e == event => None,
+                    (affected, cond @ 
+                        (Condition::Valued { term: ValuedTerm::Until(_), .. } |
+                        Condition::NonValued { term: NonValuedTerm::Until(_), .. })) => Some((affected,cond)),
+                    (affected, Condition::Valued { term: ValuedTerm::Reduced(e, reduction), level, cond })  if e == event => {
+                        let new_cond = Condition::Valued { 
+                            cond, 
+                            term: ValuedTerm::Reduced(e, reduction), 
+                            level: level.saturating_sub(reduction) 
+                        };
+                        Some((affected, new_cond))
+                    },
+                    (affected, cond @ Condition::Valued { term: ValuedTerm::Reduced(_,_), .. }) => Some((affected, cond))
                 }
-                Condition::Valued { term: ValuedTerm::Until(e), .. } |
-                Condition::NonValued { term: NonValuedTerm::Until(e), .. } if e == event => None,
-                Condition::Valued { term: ValuedTerm::Until(_), .. } |
-                Condition::NonValued { term: NonValuedTerm::Until(_), .. } => Some((affected,cond)),
-                Condition::Valued { term: ValuedTerm::Reduced(e, reduction), level, cond }  if e == event => {
-                    let new_cond = Condition::Valued { 
-                        cond, 
-                        term: ValuedTerm::Reduced(e, reduction), 
-                        level: level.saturating_sub(reduction) 
-                    };
-                    Some((affected, new_cond))
-                },
-                Condition::Valued { term: ValuedTerm::Reduced(_,_), .. } => Some((affected, cond))
             })
             .collect();
         self.conds = new_conds;
