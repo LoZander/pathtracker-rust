@@ -1,4 +1,4 @@
-use pathtracker_rust::{character::Chr, conditions::{condition_manager::ConditionManager, Condition, DamageType, NonValuedCondition, TurnEvent, ValuedCondition, ValuedTerm}, saver::NoSaver, tracker::Tracker};
+use pathtracker_rust::{character::Chr, conditions::{condition_manager::ConditionManager, Condition, DamageType, NonValuedCondition, NonValuedTerm, TurnEvent, ValuedCondition, ValuedTerm}, duration::Duration, saver::NoSaver, tracker::Tracker};
 
 #[test]
 fn add_condition_adds() {
@@ -105,4 +105,69 @@ fn alice_manual_condition_tracker_integration() {
     assert!(t.get_conditions("Alice").contains(&blinded));
     t.end_turn();
     assert!(t.get_conditions("Alice").contains(&blinded));
+}
+
+#[test]
+fn three_turn_nonvalued_condition_duration_reduced_to_2_turns_after_character_end_of_turn() {
+    let mut cm = ConditionManager::new();
+    let blinded = Condition::builder()
+        .condition(NonValuedCondition::Blinded)
+        .term(NonValuedTerm::For(Duration::from_turns(3)))
+        .build();
+    cm.add_condition("Alice", blinded.clone());
+    
+    cm.end_of_turn("Alice");
+    match cm.get_conditions("Alice").get(&blinded) {
+        Some(Condition::NonValued { term: NonValuedTerm::For(dur), .. }) => 
+            assert_eq!(&Duration::from_turns(2), dur),
+        _ => panic!(),
+    }
+}
+
+#[test]
+fn three_turn_nonvalued_condition_duration_unchanged_after_other_character_end_of_turn() {
+    let mut cm = ConditionManager::new();
+    let blinded = Condition::builder()
+        .condition(NonValuedCondition::Blinded)
+        .term(NonValuedTerm::For(Duration::from_turns(3)))
+        .build();
+    cm.add_condition("Alice", blinded.clone());
+    
+    cm.end_of_turn("Bob");
+    match cm.get_conditions("Alice").get(&blinded) {
+        Some(Condition::NonValued { term: NonValuedTerm::For(dur), .. }) => 
+            assert_eq!(&Duration::from_turns(3), dur),
+        _ => panic!(),
+    }
+}
+
+#[test]
+fn three_turn_valued_condition_duration_reduced_to_2_turns_after_character_end_of_turn() {
+    let mut cm = ConditionManager::new();
+    let bleed = Condition::builder()
+        .condition(ValuedCondition::PersistentDamage(DamageType::Bleed))
+        .value(4)
+        .term(ValuedTerm::For(Duration::from_turns(3)))
+        .build();
+    cm.add_condition("Alice", bleed.clone());
+
+    cm.end_of_turn("Alice");
+    match cm.get_conditions("Alice").get(&bleed) {
+        Some(Condition::Valued { term: ValuedTerm::For(dur), .. }) =>
+            assert_eq!(&Duration::from_turns(2), dur),
+        _ => panic!(),
+    }
+}
+
+#[test]
+fn one_turn_nonvalued_condition_duration_removed_after_character_end_of_turn() {
+    let mut cm = ConditionManager::new();
+    let blinded = Condition::builder()
+        .condition(NonValuedCondition::Blinded)
+        .term(NonValuedTerm::For(Duration::from_turns(1)))
+        .build();
+    cm.add_condition("Alice", blinded.clone());
+
+    cm.end_of_turn("Alice");
+    assert_eq!(None, cm.get_conditions("Alice").get(&blinded))
 }

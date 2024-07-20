@@ -36,35 +36,59 @@ impl ConditionManager {
     }
 
     pub fn start_of_turn(&mut self, character: &str) {
-        self.turn(character, TurnEvent::StartOfTurn(character.to_string()))
+        self.turn(TurnEvent::StartOfTurn(character.to_string()))
     }
 
     pub fn end_of_turn(&mut self, character: &str) {
-        self.turn(character, TurnEvent::EndOfTurn(character.to_string()))
+        self.turn(TurnEvent::EndOfTurn(character.to_string()))
     }
 
-    fn turn(&mut self, character: &str, event: TurnEvent) {
+    fn turn(&mut self, event: TurnEvent) {
         let new_conds = self
             .conds
             .clone()
             .into_iter()
             .filter_map(|(affected, cond)| {
                 match (affected, cond) {
-                    (affected, cond) if affected != character => Some((affected, cond)),
                     (affected, cond @ 
                         (Condition::Valued { term: ValuedTerm::Manual, .. } | 
                         Condition::NonValued { term: NonValuedTerm::Manual, .. })) => Some((affected, cond)),
-                    (affected, Condition::Valued { term: ValuedTerm::For(dur), cond, level }) => {
-                        let new_cond = Condition::Valued { term: ValuedTerm::For(dur.saturating_sub(Duration::from_turns(1))), cond, level };
-                        Some((affected, new_cond))
+                    (affected, condition @ Condition::Valued { term: ValuedTerm::For(dur), cond, level }) => {
+                        match &event {
+                            TurnEvent::EndOfTurn(c) if c == &affected => {
+                                match dur.in_turns() {
+                                    0 | 1 => None,
+                                    n => {
+                                        let new_dur = Duration::from_turns(n - 1);
+                                        let new_cond = Condition::Valued {
+                                            term: ValuedTerm::For(new_dur),
+                                            level,
+                                            cond,
+                                        };
+                                        Some((affected, new_cond))
+                                    }
+                                }
+                            },
+                            _ => Some((affected, condition))
+                        }
                     },
-                    (affected, Condition::NonValued { term: NonValuedTerm::For(dur), cond }) => {
-                        let new_dur = dur.saturating_sub(Duration::from_turns(1));
-                        let new_cond = Condition::NonValued { 
-                            term: NonValuedTerm::For(new_dur), 
-                            cond 
-                        };
-                        Some((affected, new_cond))
+                    (affected, condition @ Condition::NonValued { term: NonValuedTerm::For(dur), cond }) => {
+                        match &event {
+                            TurnEvent::EndOfTurn(c) if c == &affected => {
+                                match dur.in_turns() {
+                                    0 | 1 => None,
+                                    n => {
+                                        let new_dur = Duration::from_turns(n - 1);
+                                        let new_cond = Condition::NonValued {
+                                            term: NonValuedTerm::For(new_dur),
+                                            cond,
+                                        };
+                                        Some((affected, new_cond))
+                                    }
+                                }
+                            },
+                            _ => Some((affected, condition))
+                        }
                     }
                     (_, Condition::Valued { term: ValuedTerm::Until(e), .. } |
                         Condition::NonValued { term: NonValuedTerm::Until(e), .. }) if e == event => None,

@@ -6,4 +6,4 @@ pub mod gui;
 pub mod character;
 pub mod conditions;
 pub mod saver;
-mod duration;
+pub mod duration;
