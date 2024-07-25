@@ -12,15 +12,20 @@ mod valued_conditions;
 #[derive(Error)]
 #[derive(Debug, Clone, PartialEq)]
 pub enum Error {
-    #[error("invalid syntax: expected `{expected}`, actual `{actual}`")]
+    #[error("invalid `{ty}` syntax: expected `{expected}` but got `{actual}`")]
     InvalidSyntax {
+        ty: &'static str,
         expected: &'static str,
         actual: String
     },
-    #[error("expected one of `add, rm, mod` but got `{0}`")]
-    InvalidKeyword(String),
-    #[error("expected one of `add, rm, mod` but got no keyword")]
-    MissingKeyword,
+    #[error("invalid `{ty}` syntax: expected `{expected}` but got `{actual}`")]
+    InvalidKeyword {
+        ty: &'static str,
+        expected: &'static str,
+        actual: String
+    },
+    #[error("missing `{0}` keyword")]
+    MissingKeyword(&'static str),
     #[error("undefined nonvalued condition name: `{0}`")]
     UndefinedNonValuedCond(String),
     #[error("undefined valued condition name: `{0}`")]
@@ -31,6 +36,8 @@ pub enum Error {
         arg: String,
         #[source] source: std::num::ParseIntError,
     },
+    #[error("expected syntax `cond add <condition> [<value>] [<termination>] on <name>`, but input was missing `<name>` or `on <name>`")]
+    MissingChr,
 }
 
 type Result<T> = std::result::Result<T,Error>;
@@ -39,8 +46,8 @@ pub fn parse(args: &[&str]) -> Result<Command> {
     match args.first() {
         Some(&"add") => {
             let split: Vec<_> = args.split(|s| s == &"on").collect();
-            let cond_args = split.first().unwrap();
-            let character = reconstruct_name(split.get(1).unwrap());
+            let cond_args = split.first().expect("Internal error: illegal state reached due to internal logical error");
+            let character = reconstruct_name(split.get(1).ok_or(Error::MissingChr)?);
 
             match &cond_args.get(1..) {
                 Some([cond_name, value]) => {
@@ -77,6 +84,7 @@ pub fn parse(args: &[&str]) -> Result<Command> {
                     Ok(Command::AddCond{ character, cond })
                 }
                 _ => Err(Error::InvalidSyntax{
+                    ty: "condition",
                     expected: "cond add <condition> [<value>] [<termination>] on <character>",
                     actual: args.iter().intersperse(&" ").fold(String::from("add "), |acc,word| acc + word).to_string()
                 })
@@ -91,13 +99,25 @@ pub fn parse(args: &[&str]) -> Result<Command> {
                         .or(valued_conditions::parse(cond).map(|cond| Condition::builder().condition(cond).value(1).build()))
                         .map(|cond| Command::RmCond { cond, character: reconstruct_name(character) })
                 },
-                Some(_) => todo!(),
-                None => todo!(),
+                Some(s) => Err(Error::InvalidSyntax { 
+                    ty: "condition",
+                    expected: "cond rm <condition> from <character>", 
+                    actual: s.iter().intersperse(&" ").fold(String::from("cond "), |acc, x| acc + x)
+                }),
+                None => Err(Error::InvalidSyntax { 
+                    ty: "condition",
+                    expected: "cond rm <condition> from <character>",
+                    actual: String::from("cond rm")
+                }),
             }
         },
         Some(&"mod") => todo!(),
-        Some(s) => Err(Error::InvalidKeyword(s.to_string())),
-        None => Err(Error::MissingKeyword)
+        Some(s) => Err(Error::InvalidKeyword {
+            ty: "condition",
+            expected: "add, rm or mod",
+            actual: s.to_string(),
+        }),
+        None => Err(Error::MissingKeyword("condition"))
     }
 }
 
@@ -105,7 +125,11 @@ fn parse_nonvalued_term(term_type: &str, term_action: &[&str]) -> Result<NonValu
     match term_type {
         "for" => parse_duration(term_action).map(NonValuedTerm::For),
         "until" => parse_turn_event(term_action).map(NonValuedTerm::Until),
-        _ => todo!()
+        s => Err(Error::InvalidSyntax { 
+            ty: "condition termination", 
+            expected: "for <duration> | until <event>", 
+            actual: s.to_string()
+        })
     }
 }
 
@@ -145,7 +169,11 @@ fn parse_turn_event(term_action: &[&str]) -> Result<TurnEvent> {
             let character = reconstruct_name(character);
             Ok(TurnEvent::EndOfTurn(character))
         },
-        _ => todo!()
+        s => Err(Error::InvalidSyntax { 
+            ty: "turn event", 
+            expected: "(start | end) of <character> turn", 
+            actual: s.iter().intersperse(&" ").fold(String::new(), |acc, x| acc + x)
+        })
     }
     
 }
@@ -162,12 +190,20 @@ fn parse_duration(term_action: &[&str]) -> Result<Duration> {
                 "m" | "min" | "mins" | "minute" | "minutes" => 
                     Duration::from_minutes(number),
                 "h" | "hour" | "hours" => Duration::from_hours(number),
-                _ => todo!()
+                unit => Err(Error::InvalidKeyword { 
+                    ty: "duration unit", 
+                    expected: "t, turn, turns, m, min, mins, minute, minutes, h, hour or hours", 
+                    actual:  unit.to_string()
+                })?
             };
 
             Ok(dur)
         },
-        _ => todo!()
+        s => Err(Error::InvalidSyntax { 
+            ty: "duration",
+            expected: "<number> <unit>", 
+            actual: s.iter().intersperse(&" ").fold(String::new(), |acc, x| acc + x)
+        })
     }
 }
 
