@@ -96,7 +96,7 @@ fn alice_manual_condition_tracker_integration() {
     t.add_chr(alice).unwrap();
     t.add_chr(bob).unwrap();
     let blinded = Condition::builder().condition(NonValuedCondition::Blinded).build();
-    t.add_cond("Alice", blinded.clone()).unwrap();
+    t.add_condition("Alice", blinded.clone()).unwrap();
 
     assert!(t.get_conditions("Alice").contains(&blinded));
     t.end_turn();

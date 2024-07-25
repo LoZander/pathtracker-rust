@@ -19,6 +19,8 @@ pub enum Error {
     },
     #[error("expected one of `add, rm, mod` but got `{0}`")]
     InvalidKeyword(String),
+    #[error("expected one of `add, rm, mod` but got no keyword")]
+    MissingKeyword,
     #[error("undefined nonvalued condition name: `{0}`")]
     UndefinedNonValuedCond(String),
     #[error("undefined valued condition name: `{0}`")]
@@ -80,8 +82,22 @@ pub fn parse(args: &[&str]) -> Result<Command> {
                 })
             }
         },
-        Some(&"rm") => todo!(),
-        _ => todo!()
+        Some(&"rm") => {
+            match args.get(1..) {
+                Some([cond, _, "from", character @ ..]) |
+                Some([cond, "from", character @ ..]) => {
+                    nonvalued_conditions::parse(cond)
+                        .map(|cond| Condition::builder().condition(cond).build())
+                        .or(valued_conditions::parse(cond).map(|cond| Condition::builder().condition(cond).value(1).build()))
+                        .map(|cond| Command::RmCond { cond, character: reconstruct_name(character) })
+                },
+                Some(_) => todo!(),
+                None => todo!(),
+            }
+        },
+        Some(&"mod") => todo!(),
+        Some(s) => Err(Error::InvalidKeyword(s.to_string())),
+        None => Err(Error::MissingKeyword)
     }
 }
 

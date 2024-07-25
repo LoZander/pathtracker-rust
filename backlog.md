@@ -4,6 +4,7 @@
 - [ ] clear tracker
 - [ ] GUI
 - [ ] test `tracker::change*`
+- [ ] test gui terminal remove conditions parsing
 
 # Dream
 - save tracker

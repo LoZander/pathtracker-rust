@@ -7,9 +7,9 @@ mod parser;
 
 const CLEAR: &str  = "\x1B[2J\n";
 const SPACER: &str = "  ";
-const LINE: &str   = "-----------------------------------------------";    
-const DLINE: &str  = "===============================================";
-const TITLE: &str  = "              ~~~~PATHTRACKER~~~~              ";
+const LINE: &str   = "-------------------------------------------------------";    
+const DLINE: &str  = "=======================================================";
+const TITLE: &str  = "| VΛVΛVΛV    <>~<>~<>~PATHTRACKER~<>~<>~<>    VΛVΛVΛV |";
 const COLUMN: &str = concatcp!(
     "   ", "Init", SPACER, "Dex", SPACER, "P", SPACER, "Name      ", 
     SPACER, "HP     ", SPACER, "Condition(s)");
@@ -87,6 +87,7 @@ enum Command {
     RmChr { name: String },
     AddCond { character: String, cond: Condition },
     Mod { name: String, new_name: Option<String>, init: Option<i32>, player: Option<bool>, dex: Option<i32>, health: Option<u32> },
+    RmCond { character: String, cond: Condition },
 }
 
 fn execute_command<S: Saver>(t: &mut Tracker<S>, cmd: Command) -> tracker::Result<()> {
@@ -105,9 +106,8 @@ fn execute_command<S: Saver>(t: &mut Tracker<S>, cmd: Command) -> tracker::Resul
             t.add_chr(builder.build())
         },
         Command::RmChr { name } => t.rm_chr(&name),
-        Command::AddCond { character, cond } => {
-            t.add_cond(&character, cond)
-        },
+        Command::AddCond { character, cond } => t.add_condition(&character, cond),
+        Command::RmCond { character, cond } => { t.rm_condition(&character, &cond); Ok(()) },
         Command::Mod { name, new_name, init, player, dex, health } => {
             if let Some(init) = init {
                 t.change_init(&name, init)?;

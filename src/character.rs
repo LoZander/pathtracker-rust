@@ -1,11 +1,8 @@
 use std::cmp::Ordering;
-
 use serde::{Deserialize, Serialize};
 
-use crate::conditions::condition_manager::ConditionManager;
-
 #[derive(Debug, Clone, PartialEq, Eq)]
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Hash)]
 pub struct Health {
     pub current: u32,
     pub max: u32,
@@ -27,12 +24,11 @@ impl Health {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Hash)]
 pub struct Chr {
     pub name: String,
     pub init: i32,
     pub player: bool,
-    pub conds: ConditionManager,
     pub dex: Option<i32>,
     pub health: Option<Health>,
 }
@@ -101,7 +97,6 @@ impl ChrBuilder {
             name: self.name,
             init: self.init,
             player: self.player,
-            conds: ConditionManager::new(),
             dex: self.dex,
             health: self.health,
         }

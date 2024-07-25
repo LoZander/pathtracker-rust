@@ -185,7 +185,7 @@ impl<S: Saver> Tracker<S> {
         Ok(())
     }
 
-    pub fn add_cond(&mut self, name: &str, cond: Condition) -> Result<()> {
+    pub fn add_condition(&mut self, name: &str, cond: Condition) -> Result<()> {
         match self.get_chr(name) {
             None => todo!(),
             Some(_) => {
@@ -197,6 +197,10 @@ impl<S: Saver> Tracker<S> {
 
     pub fn get_conditions(&self, character: &str) -> HashSet<&Condition> {
         self.cm.get_conditions(character)
+    }
+
+    pub fn rm_condition(&mut self, character: &str, condition: &Condition) {
+        self.cm.remove_condition(character, condition)
     }
     
     pub fn rm_chr(&mut self, name: &str) -> Result<()> {
