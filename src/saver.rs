@@ -28,7 +28,7 @@ pub trait Saver : Default + Clone + Sized {
 #[derive(Debug, Clone, Copy, Default)]
 pub struct NoSaver;
 impl Saver for NoSaver {
-    fn save<D: Serialize + DeserializeOwned>(&self, data: &D, dir: impl Into<String>) -> Result<()> {
+    fn save<D: Serialize + DeserializeOwned>(&self, _: &D, _: impl Into<String>) -> Result<()> {
         Ok(())
     }
 

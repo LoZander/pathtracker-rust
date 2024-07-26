@@ -23,7 +23,7 @@ fn rename_into_already_existing_fails() -> tracker::Result<()> {
     ]).build();
 
     let res = t.rename("Link", "Ganon");
-    assert_eq!(Err(tracker::Error::RenameDuplicateError{ old: "Link".into(), new: "Ganon".into() }), res);
+    assert_eq!(Err(tracker::Error::RenameDupError{ old: "Link".into(), new: "Ganon".into() }), res);
 
     Ok(())
 }
@@ -37,9 +37,9 @@ fn rename_preserves_order() -> tracker::Result<()> {
     ]).build();
 
     t.rename("Link", "Ganon")?;
-    assert_eq!(Some(&Chr::builder("Lucifer", 24, true).build()), t.end_turn());
-    assert_eq!(Some(&Chr::builder("Ganon", 24, true).build()), t.end_turn());
-    assert_eq!(Some(&Chr::builder("Lament", 24, false).build()), t.end_turn());
+    assert_eq!(Ok(Some(&Chr::builder("Lucifer", 24, true).build())), t.end_turn());
+    assert_eq!(Ok(Some(&Chr::builder("Ganon", 24, true).build())), t.end_turn());
+    assert_eq!(Ok(Some(&Chr::builder("Lament", 24, false).build())), t.end_turn());
 
     Ok(())
 }
@@ -76,9 +76,9 @@ fn change_init_preserves_sorting() -> tracker::Result<()> {
     ]).build(); println!("{:?}", t);
     t.change_init("Lucifer", 19)?;
 
-    assert_eq!("Link", t.end_turn().unwrap().name);
-    assert_eq!("Lucifer", t.end_turn().unwrap().name);
-    assert_eq!("Hugo", t.end_turn().unwrap().name);
+    assert_eq!("Link", t.end_turn().unwrap().unwrap().name);
+    assert_eq!("Lucifer", t.end_turn().unwrap().unwrap().name);
+    assert_eq!("Hugo", t.end_turn().unwrap().unwrap().name);
 
     Ok(())
 }
@@ -95,7 +95,7 @@ fn change_init_not_in_turn_preserves_in_turn() -> tracker::Result<()> {
         hugo.clone(),
     ]).build();
 
-    t.end_turn();
+    t.end_turn().unwrap();
     t.change_init("Link", 25)?;
 
     assert_eq!(Some(&lucifer), t.get_in_turn());
@@ -115,8 +115,8 @@ fn change_init_not_in_turn_so_skipped_preserves_in_turn() -> tracker::Result<()>
         hugo.clone(),
     ]).build();
 
-    t.end_turn();
-    t.end_turn();
+    t.end_turn().unwrap();
+    t.end_turn().unwrap();
 
     assert_eq!("Link", t.get_in_turn().unwrap().name);
     t.change_init("Hugo", 22)?;
@@ -137,8 +137,8 @@ fn change_init_not_in_turn_so_two_turns_preserves_in_turn() -> tracker::Result<(
         hugo.clone(),
     ]).build();
 
-    t.end_turn();
-    t.end_turn();
+    t.end_turn().unwrap();
+    t.end_turn().unwrap();
 
     assert_eq!("Link", t.get_in_turn().unwrap().name);
     t.change_init("Lucifer", 5)?;
@@ -159,8 +159,8 @@ fn change_init_not_in_turn_so_skipped_returns_skipped() -> tracker::Result<()> {
         hugo.clone(),
     ]).build();
 
-    t.end_turn();
-    t.end_turn();
+    t.end_turn().unwrap();
+    t.end_turn().unwrap();
 
     let skipped = t.change_init("Hugo", 22)?;
 
@@ -181,8 +181,8 @@ fn change_init_not_in_turn_so_two_turns_returns_two_turns() -> tracker::Result<(
         hugo.clone(),
     ]).build();
 
-    t.end_turn();
-    t.end_turn();
+    t.end_turn().unwrap();
+    t.end_turn().unwrap();
 
     let skipped = t.change_init("Lucifer", 7)?;
 
@@ -203,8 +203,8 @@ fn change_init_in_turn_wheearlier_order_changes_in_turn() -> tracker::Result<()>
         hugo.clone(),
     ]).build();
 
-    t.end_turn();
-    t.end_turn();
+    t.end_turn().unwrap();
+    t.end_turn().unwrap();
     
     assert_eq!("Link", t.get_in_turn().unwrap().name);
     t.change_init("Link", 30)?;
@@ -225,8 +225,8 @@ fn change_init_in_turn_when_earlier_order_changes_in_turn() -> tracker::Result<(
         hugo.clone(),
     ]).build();
 
-    t.end_turn();
-    t.end_turn();
+    t.end_turn().unwrap();
+    t.end_turn().unwrap();
 
     assert_eq!("Link", t.get_in_turn().unwrap().name);
     t.change_init("Link", 8)?;
