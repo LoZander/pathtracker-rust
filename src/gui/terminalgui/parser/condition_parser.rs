@@ -3,7 +3,7 @@ use crate::conditions::{Condition, NonValuedTerm, TurnEvent, ValuedTerm};
 use crate::duration::Duration;
 use super::Command;
 
-use super::reconstruct_name;
+use super::unparse;
 
 mod nonvalued_conditions;
 mod valued_conditions;
@@ -47,7 +47,7 @@ pub fn parse(args: &[&str]) -> Result<Command> {
         Some(&"add") => {
             let split: Vec<_> = args.split(|s| s == &"on").collect();
             let cond_args = split.first().expect("Internal error: illegal state reached due to internal logical error");
-            let character = reconstruct_name(split.get(1).ok_or(Error::MissingChr)?);
+            let character = unparse(split.get(1).ok_or(Error::MissingChr)?);
 
             match &cond_args.get(1..) {
                 Some([cond_name, value]) => {
@@ -59,7 +59,7 @@ pub fn parse(args: &[&str]) -> Result<Command> {
                 Some([cond_name, value, term_type @ ("for" | "until" | "reduced"), term_trigger @ ..]) => {
                     let value = parse_value(value)?;
                     let cond_type = valued_conditions::parse(cond_name)?;
-                    let term = parse_valued_term(term_type, term_trigger)?;
+                    let term = parse_valued_term(character.clone(), term_type, term_trigger)?;
                     let cond = Condition::builder()
                         .condition(cond_type)
                         .value(value)
@@ -75,7 +75,7 @@ pub fn parse(args: &[&str]) -> Result<Command> {
                 },
                 Some([cond_name, term_type @ ("for" | "until"), term_trigger @ ..]) => {
                     let cond_type = nonvalued_conditions::parse(cond_name)?;
-                    let term = parse_nonvalued_term(term_type, term_trigger)?;
+                    let term = parse_nonvalued_term(character.clone(), term_type, term_trigger)?;
                     let cond = Condition::builder()
                         .condition(cond_type)
                         .term(term)
@@ -97,7 +97,7 @@ pub fn parse(args: &[&str]) -> Result<Command> {
                     nonvalued_conditions::parse(cond)
                         .map(|cond| Condition::builder().condition(cond).build())
                         .or(valued_conditions::parse(cond).map(|cond| Condition::builder().condition(cond).value(1).build()))
-                        .map(|cond| Command::RmCond { cond, character: reconstruct_name(character) })
+                        .map(|cond| Command::RmCond { cond, character: unparse(character) })
                 },
                 Some(s) => Err(Error::InvalidSyntax { 
                     ty: "condition",
@@ -111,7 +111,7 @@ pub fn parse(args: &[&str]) -> Result<Command> {
                 }),
             }
         },
-        Some(&"mod") => todo!(),
+        Some(&"mod") => unimplemented!(),
         Some(s) => Err(Error::InvalidKeyword {
             ty: "condition",
             expected: "add, rm or mod",
@@ -121,10 +121,10 @@ pub fn parse(args: &[&str]) -> Result<Command> {
     }
 }
 
-fn parse_nonvalued_term(term_type: &str, term_action: &[&str]) -> Result<NonValuedTerm> {
+fn parse_nonvalued_term(character: String, term_type: &str, term_action: &[&str]) -> Result<NonValuedTerm> {
     match term_type {
         "for" => parse_duration(term_action).map(NonValuedTerm::For),
-        "until" => parse_turn_event(term_action).map(NonValuedTerm::Until),
+        "until" => parse_turn_event(character, term_action).map(NonValuedTerm::Until),
         s => Err(Error::InvalidSyntax { 
             ty: "condition termination", 
             expected: "for <duration> | until <event>", 
@@ -133,20 +133,29 @@ fn parse_nonvalued_term(term_type: &str, term_action: &[&str]) -> Result<NonValu
     }
 }
 
-fn parse_valued_term(term_type: &str, term_action: &[&str]) -> Result<ValuedTerm> {
+fn parse_valued_term(character: String, term_type: &str, term_action: &[&str]) -> Result<ValuedTerm> {
     match term_type {
         "for" => parse_duration(term_action).map(ValuedTerm::For),
-        "until" => parse_turn_event(term_action).map(ValuedTerm::Until),
+        "until" => parse_turn_event(character, term_action).map(ValuedTerm::Until),
         "reduced" => match term_action {
+            ["by", n, "at", turn_event @ ..] | 
             ["by", n, turn_event @ ..] => {
                 let n = parse_value(n)?;
-                let event = parse_turn_event(turn_event)?;
+                let event = parse_turn_event(character, turn_event)?;
 
                 Ok(ValuedTerm::Reduced(event, n))
             },
-            _ => todo!()
+            _ => Err(Error::InvalidSyntax { 
+                ty: "reduction termination",
+                expected: "reduced by <value> at <turn event>",
+                actual: format!("reduced {}", &unparse(term_action))
+            })
         },
-        _ => todo!()
+        _ => Err(Error::InvalidKeyword { 
+            ty: "termination", 
+            expected: "for, until or reduced", 
+            actual: term_type.to_string()
+        })
     }
 }
 
@@ -157,16 +166,16 @@ fn parse_value(n: &str) -> Result<u8> {
     })
 }
 
-fn parse_turn_event(term_action: &[&str]) -> Result<TurnEvent> {
+fn parse_turn_event(character: String, term_action: &[&str]) -> Result<TurnEvent> {
     match term_action {
-        ["start", "of", "turn"] => todo!(),
-        ["end", "of", "turn"] => todo!(),
+        ["start", "of", "turn"] => Ok(TurnEvent::StartOfTurn(character)),
+        ["end", "of", "turn"] => Ok(TurnEvent::EndOfTurn(character)),
         ["start", "of", character @ .., "turn"] => {
-            let character = reconstruct_name(character);
+            let character = unparse(character);
             Ok(TurnEvent::StartOfTurn(character))
         },
         ["end", "of", character @ .., "turn"] => {
-            let character = reconstruct_name(character);
+            let character = unparse(character);
             Ok(TurnEvent::EndOfTurn(character))
         },
         s => Err(Error::InvalidSyntax { 

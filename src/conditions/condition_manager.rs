@@ -108,7 +108,7 @@ impl ConditionManager {
                     (affected, cond @ 
                         (Condition::Valued { term: ValuedTerm::Until(_), .. } |
                         Condition::NonValued { term: NonValuedTerm::Until(_), .. })) => Some((affected,cond)),
-                    (affected, Condition::Valued { term: ValuedTerm::Reduced(e, reduction), level, cond })  if e == event => {
+                    (affected, Condition::Valued { term: ValuedTerm::Reduced(e, reduction), level, cond }) if e == event => {
                         let new_cond = Condition::Valued { 
                             cond, 
                             term: ValuedTerm::Reduced(e, reduction), 

@@ -51,7 +51,7 @@ pub fn parse_input(input: &str) -> ParseResult {
         "add" => match args {
             [init, name @ ..] => {
                 let init: i32 = init.parse().map_err(|err| Error::ParseInt { arg: (*init).to_string(), source: err })?;
-                let name = reconstruct_name(name);
+                let name = unparse(name);
 
                 let mut map = AnyMap::new();
 
@@ -99,7 +99,7 @@ pub fn parse_input(input: &str) -> ParseResult {
     }
 }
 
-fn reconstruct_name(name: &[&str]) -> String {
+fn unparse(name: &[&str]) -> String {
     name.iter().intersperse(&" ").fold(String::new(), |acc, x| acc + x)
 }
 
