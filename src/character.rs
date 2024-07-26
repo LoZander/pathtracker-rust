@@ -29,7 +29,6 @@ pub struct Chr {
     pub name: String,
     pub init: i32,
     pub player: bool,
-    pub dex: Option<i32>,
     pub health: Option<Health>,
 }
 
@@ -42,10 +41,6 @@ impl PartialOrd for Chr {
 impl Ord for Chr {
     fn cmp(&self, other: &Self) -> Ordering {
         if self.init != other.init { return other.init.cmp(&self.init) }
-
-        if let (Some(dex1), Some(dex2)) = (self.dex, other.dex) {
-            if dex1 != dex2 { return dex2.cmp(&dex1) }
-        }
 
         Ordering::Equal
     }
@@ -77,7 +72,6 @@ pub struct ChrBuilder {
     name: String,
     init: i32,
     player: bool,
-    dex: Option<i32>,
     health: Option<Health>,
 }
 
@@ -87,7 +81,6 @@ impl ChrBuilder {
             name: name.into(),
             init,
             player,
-            dex: None,
             health: None,
         }
     }
@@ -97,18 +90,12 @@ impl ChrBuilder {
             name: self.name,
             init: self.init,
             player: self.player,
-            dex: self.dex,
             health: self.health,
         }
     }
     
     pub fn with_health(mut self, health: Health) -> Self {
         self.health = Some(health);
-        self
-    }
-
-    pub fn with_dex(mut self, dex: i32) -> Self {
-        self.dex = Some(dex);
         self
     }
 }
@@ -130,26 +117,6 @@ mod tests {
     fn chr_order_less_initiative_is_greater_order() {
         let c1 = Chr::builder("a", 10, true).build();
         let c2 = Chr::builder("b", 20, true).build();
-
-        assert_eq!(Ordering::Greater, c1.cmp(&c2))
-    }
-
-    #[test]
-    fn chr_order_same_initiative_greater_dex_is_less_order() {
-        let mut c1 = Chr::builder("a", 20, true).build();
-        let mut c2 = Chr::builder("b", 20, true).build();
-        c1.dex = Some(5);
-        c2.dex = Some(2);
-
-        assert_eq!(Ordering::Less, c1.cmp(&c2))
-    }
-
-    #[test]
-    fn chr_order_same_initiative_less_dex_is_greater_order() {
-        let mut c1 = Chr::builder("a", 20, true).build();
-        let mut c2 = Chr::builder("b", 20, true).build();
-        c1.dex = Some(1);
-        c2.dex = Some(4);
 
         assert_eq!(Ordering::Greater, c1.cmp(&c2))
     }
