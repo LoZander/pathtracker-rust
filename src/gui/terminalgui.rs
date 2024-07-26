@@ -92,7 +92,7 @@ enum Command {
 
 fn execute_command<S: Saver>(t: &mut Tracker<S>, cmd: Command) -> tracker::Result<()> {
     match cmd {
-        Command::EndTurn => {t.end_turn(); Ok(())},
+        Command::EndTurn => t.end_turn().map(|_| ()),
         Command::AddChr { name, init, player, dex , health} => {
             let builder = Chr::builder(name, init, player);
             let builder = match dex {

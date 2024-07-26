@@ -142,9 +142,14 @@ impl<S: Saver> Tracker<S> {
         &self.chrs[..]
     }
 
-    pub fn end_turn(&mut self) -> Option<&Chr> {
+    pub fn end_turn(&mut self) -> Result<Option<&Chr>> {
         if let Some(chr) = self.get_in_turn().cloned() {
-            self.cm.end_of_turn(&chr.name)
+            let damage = self.cm.end_of_turn(&chr.name);
+            if let Some(damage) = damage {
+                // It can only fail if there is no character by the name,
+                // which there naturally will always be in this if body
+                self.damage(&chr.name, damage.into())?
+            }
         }
 
         if !self.chrs.is_empty() { 
@@ -157,8 +162,8 @@ impl<S: Saver> Tracker<S> {
         if let Some(chr) = self.get_in_turn().cloned() {
             self.cm.start_of_turn(&chr.name)
         }
-        self.auto_save().unwrap();
-        self.get_in_turn()
+        self.auto_save()?;
+        Ok(self.get_in_turn())
     }
 
     pub fn get_in_turn(&self) -> Option<&Chr> {
@@ -180,16 +185,17 @@ impl<S: Saver> Tracker<S> {
         self.chrs.push(chr);
         self.chrs.sort();
 
-        self.auto_save().unwrap();
+        self.auto_save()?;
 
         Ok(())
     }
 
     pub fn add_condition(&mut self, name: &str, cond: Condition) -> Result<()> {
         match self.get_chr(name) {
-            None => todo!(),
+            None => Err(Error::ChangeNoneError(name.to_string())),
             Some(_) => {
                 self.cm.add_condition(name, cond);
+                self.auto_save()?;
                 Ok(())
             }
         }
@@ -214,7 +220,7 @@ impl<S: Saver> Tracker<S> {
 
         if self.chrs.is_empty() {
             self.in_turn_index = None;
-            self.auto_save().unwrap();
+            self.auto_save()?;
             return Ok(())
         } 
 
@@ -228,13 +234,13 @@ impl<S: Saver> Tracker<S> {
                     // only to then end the turn (which increments it), 
                     // ending the turn has other effects which should occur in this situation.
                     self.in_turn_index = in_turn.checked_sub(1);
-                    self.end_turn();
+                    self.end_turn()?;
                 }
                 Ordering::Greater => ()
             }
         }
 
-        self.auto_save().unwrap();
+        self.auto_save()?;
 
         Ok(())
     }
@@ -248,19 +254,19 @@ impl<S: Saver> Tracker<S> {
 
         self.cm.rename_character(old, &new);
 
-        self.unchecked_change(old, |chr| { chr.name = new; Ok(()) })
+        self.unchecked_change(old, |chr| { chr.name = new; })
     }
 
     pub fn change_dex(&mut self, name: &str, dex: i32) -> Result<Option<MovedStatus>> {
-        self.change(name, |chr| { chr.dex = Some(dex); Ok(()) })
+        self.change(name, |chr| chr.dex = Some(dex))
     }
 
     pub fn change_init(&mut self, name: &str, init: i32) -> Result<Option<MovedStatus>> {
-        self.change(name, |chr| { chr.init = init; Ok(()) })        
+        self.change(name, |chr| chr.init = init)
     }
 
     pub fn set_player(&mut self, name: &str, player: bool) -> Result<()> {
-        self.unchecked_change(name, |chr| { chr.player = player; Ok(()) })
+        self.unchecked_change(name, |chr| chr.player = player)
     }
 
     pub fn change_max_health(&mut self, name: &str, health: u32) -> Result<()> {
@@ -271,28 +277,26 @@ impl<S: Saver> Tracker<S> {
             } else {
                 chr.health = Some(Health::new(health));
             }
-            Ok(())
         })
     }
 
     pub fn damage(&mut self, name: &str, damage: u32) -> Result<()> {
-        self.unchecked_change(name, |chr| { chr.damage(damage); Ok(()) })
+        self.unchecked_change(name, |chr| { chr.damage(damage); })
     }
 
     pub fn heal(&mut self, name: &str, heal: u32) -> Result<()> {
-        self.unchecked_change(name, |chr| { chr.heal(heal); Ok(()) })
+        self.unchecked_change(name, |chr| { chr.heal(heal); })
     }
 
     fn unchecked_change<F>(&mut self, name: &str, f: F) -> Result<()> where
-        F: FnOnce(&mut Chr) -> Result<()>
+        F: FnOnce(&mut Chr)
     {
         for chr in &mut self.chrs {
             if chr.name == name {
-                return f(chr).and({
-                    self.chrs.sort();
-                    self.auto_save().unwrap();
-                    Ok(())
-                })
+                f(chr);
+                self.chrs.sort();
+                self.auto_save()?;
+                return Ok(())
             }
         }
 
@@ -300,7 +304,7 @@ impl<S: Saver> Tracker<S> {
     }
 
     fn change<F>(&mut self, name: &str, f: F) -> Result<Option<MovedStatus>> where
-        F: FnOnce(&mut Chr) -> Result<()>
+        F: FnOnce(&mut Chr)
     {
         let before = self.pos(name).ok_or(Error::ChangeNoneError(name.into()))?;
         let in_turn = self.in_turn_index;
@@ -328,12 +332,12 @@ impl<S: Saver> Tracker<S> {
 
     pub fn save(&self, file: impl Into<String>) -> Result<()> {
         let data: TrackerData = self.to_owned().into();
-        self.saver.save(&data, format!("saves/{}", file.into())).unwrap();
+        self.saver.save(&data, format!("saves/{}", file.into()))?;
         Ok(())
     }
 
     fn auto_save(&self) -> Result<()> {
-        self.save("auto.save").unwrap();
+        self.save("auto.save")?;
         Ok(())
     }
 

@@ -4,8 +4,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::duration::Duration;
 
-use super::{Condition, NonValuedTerm, TurnEvent, ValuedTerm};
+use super::{Condition, NonValuedTerm, TurnEvent, ValuedCondition, ValuedTerm};
 
+pub type Damage = u8;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 #[derive(Deserialize, Serialize)]
@@ -36,14 +37,26 @@ impl ConditionManager {
     }
 
     pub fn start_of_turn(&mut self, character: &str) {
-        self.turn(TurnEvent::StartOfTurn(character.to_string()))
+        self.handle_turn_event(TurnEvent::StartOfTurn(character.to_string()))
     }
 
-    pub fn end_of_turn(&mut self, character: &str) {
-        self.turn(TurnEvent::EndOfTurn(character.to_string()))
+    pub fn end_of_turn(&mut self, character: &str) -> Option<Damage> {
+        let damage = self.get_conditions(character).iter()
+            .filter_map(|cond| match cond {
+                Condition::Valued { cond: ValuedCondition::PersistentDamage(_), level, .. } => Some(*level),
+                _ => None
+            })
+            .sum();
+
+        self.handle_turn_event(TurnEvent::EndOfTurn(character.to_string()));
+
+        match damage {
+            0 => None,
+            d => Some(d)
+        }
     }
 
-    fn turn(&mut self, event: TurnEvent) {
+    fn handle_turn_event(&mut self, event: TurnEvent) {
         let new_conds = self
             .conds
             .clone()

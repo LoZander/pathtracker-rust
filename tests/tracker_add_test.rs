@@ -20,10 +20,10 @@ fn add_preserves_descending_inititative_order() -> tracker::Result<()> {
 
     t.add_chr(Chr::builder("Kristy", 24, true).build())?;
 
-    assert_eq!(Some(&Chr::builder("Bucky", 30, true).build()), t.end_turn());
-    assert_eq!(Some(&Chr::builder("Hellen", 27, true).build()), t.end_turn());
-    assert_eq!(Some(&Chr::builder("Kristy", 24, true).build()), t.end_turn());
-    assert_eq!(Some(&Chr::builder("Skelly Boy", 3, false).build()), t.end_turn());
+    assert_eq!(Ok(Some(&Chr::builder("Bucky", 30, true).build())), t.end_turn());
+    assert_eq!(Ok(Some(&Chr::builder("Hellen", 27, true).build())), t.end_turn());
+    assert_eq!(Ok(Some(&Chr::builder("Kristy", 24, true).build())), t.end_turn());
+    assert_eq!(Ok(Some(&Chr::builder("Skelly Boy", 3, false).build())), t.end_turn());
 
     Ok(())
 }
@@ -36,8 +36,8 @@ fn add_chr_before_in_turn_preserves_in_turn() -> tracker::Result<()> {
         Chr::builder("Skelly Boy", 3, false).build(),
     ]).build();
 
-    t.end_turn();
-    t.end_turn();
+    t.end_turn().unwrap();
+    t.end_turn().unwrap();
 
     assert_eq!(Some(&Chr::builder("Hellen", 27, true).build()), t.get_in_turn());
 
@@ -55,8 +55,8 @@ fn add_chr_after_in_turn_preserves_in_turn() -> tracker::Result<()> {
         Chr::builder("Skelly Boy", 3, false).build(),
     ]).build();
 
-    t.end_turn();
-    t.end_turn();
+    t.end_turn().unwrap();
+    t.end_turn().unwrap();
 
     assert_eq!(Some(&Chr::builder("Hellen", 27, true).build()), t.get_in_turn());
     t.add_chr(Chr::builder("Unlucky", 24, false).build())?;

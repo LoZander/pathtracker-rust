@@ -1,4 +1,4 @@
-use pathtracker_rust::{character::Chr, conditions::{condition_manager::ConditionManager, Condition, DamageType, NonValuedCondition, NonValuedTerm, TurnEvent, ValuedCondition, ValuedTerm}, duration::Duration, saver::NoSaver, tracker::Tracker};
+use pathtracker_rust::{character::{Chr, Health}, conditions::{condition_manager::ConditionManager, Condition, DamageType, NonValuedCondition, NonValuedTerm, TurnEvent, ValuedCondition, ValuedTerm}, duration::Duration, saver::NoSaver, tracker::{self, Tracker}};
 
 #[test]
 fn add_condition_adds() {
@@ -99,11 +99,11 @@ fn alice_manual_condition_tracker_integration() {
     t.add_condition("Alice", blinded.clone()).unwrap();
 
     assert!(t.get_conditions("Alice").contains(&blinded));
-    t.end_turn();
+    t.end_turn().unwrap();
     assert!(t.get_conditions("Alice").contains(&blinded));
-    t.end_turn();
+    t.end_turn().unwrap();
     assert!(t.get_conditions("Alice").contains(&blinded));
-    t.end_turn();
+    t.end_turn().unwrap();
     assert!(t.get_conditions("Alice").contains(&blinded));
 }
 
@@ -170,4 +170,23 @@ fn one_turn_nonvalued_condition_duration_removed_after_character_end_of_turn() {
 
     cm.end_of_turn("Alice");
     assert_eq!(None, cm.get_conditions("Alice").get(&blinded))
+}
+
+#[test]
+fn persistent_damage_reduces_health_at_end_of_turn() -> tracker::Result<()> {
+    let mut t: Tracker<NoSaver> = Tracker::default();
+    let c = Chr::builder("Alice", 32, true).with_health(Health::new(30)).build();
+    t.add_chr(c)?;
+    let bleed = Condition::builder()
+        .condition(ValuedCondition::PersistentDamage(DamageType::Bleed))
+        .value(5)
+        .build();
+    t.add_condition("Alice", bleed)?;
+
+    t.end_turn()?;
+    t.end_turn()?;
+
+    assert_eq!(25, t.get_chr("Alice").unwrap().health.as_ref().unwrap().current);
+
+    Ok(())
 }
