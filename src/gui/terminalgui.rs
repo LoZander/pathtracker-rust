@@ -11,7 +11,7 @@ const LINE: &str   = "-------------------------------------------------------";
 const DLINE: &str  = "=======================================================";
 const TITLE: &str  = "| VΛVΛVΛV    <>~<>~<>~PATHTRACKER~<>~<>~<>    VΛVΛVΛV |";
 const COLUMN: &str = concatcp!(
-    "   ", "Init", SPACER, "Dex", SPACER, "P", SPACER, "Name      ", 
+    "   ", "Init", SPACER, "P", SPACER, "Name      ", 
     SPACER, "HP     ", SPACER, "Condition(s)");
 const HEADER: &str = concatcp!(
     DLINE, "\n",
@@ -52,10 +52,9 @@ pub fn run<S: Saver>(mut t: Tracker<S>) -> Result<(), Error> {
                 .intersperse(format!("\n{:^38}", ""))
                 .fold(String::new(), |acc, cond| acc + &cond);
             println!(
-                "{:^3}{:>4}{SPACER}{:>3}{SPACER}{:^1}{SPACER}{:<10}{SPACER}{:>3}/{:>3}{SPACER}{}", 
+                "{:^3}{:>4}{SPACER}{:^1}{SPACER}{:<10}{SPACER}{:>3}/{:>3}{SPACER}{}", 
                 if t.get_in_turn() == Some(chr) { ">" } else { "" },
                 chr.init, 
-                chr.dex.map_or("---".to_string(), |x| x.to_string()), 
                 if chr.player {"*"} else {""},
                 chr.name,
                 chr.health.as_ref().map_or("---".to_string(), |x| x.current.to_string()),
@@ -83,22 +82,29 @@ pub fn run<S: Saver>(mut t: Tracker<S>) -> Result<(), Error> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Command {
     EndTurn,
-    AddChr { name: String, init: i32, player: bool, dex: Option<i32>, health: Option<u32> },
+    AddChr { 
+        name: String, 
+        init: i32, 
+        player: bool, 
+        health: Option<u32> 
+    },
     RmChr { name: String },
     AddCond { character: String, cond: Condition },
-    Mod { name: String, new_name: Option<String>, init: Option<i32>, player: Option<bool>, dex: Option<i32>, health: Option<u32> },
+    Mod { 
+        name: String, 
+        new_name: Option<String>,
+        init: Option<i32>, 
+        player: Option<bool>,
+        health: Option<u32>
+    },
     RmCond { character: String, cond: Condition },
 }
 
 fn execute_command<S: Saver>(t: &mut Tracker<S>, cmd: Command) -> tracker::Result<()> {
     match cmd {
         Command::EndTurn => t.end_turn().map(|_| ()),
-        Command::AddChr { name, init, player, dex , health} => {
+        Command::AddChr { name, init, player, health} => {
             let builder = Chr::builder(name, init, player);
-            let builder = match dex {
-                None => builder,
-                Some(dex) => builder.with_dex(dex)
-            };
             let builder = match health {
                 None => builder,
                 Some(health) => builder.with_health(Health::new(health))
@@ -108,17 +114,13 @@ fn execute_command<S: Saver>(t: &mut Tracker<S>, cmd: Command) -> tracker::Resul
         Command::RmChr { name } => t.rm_chr(&name),
         Command::AddCond { character, cond } => t.add_condition(&character, cond),
         Command::RmCond { character, cond } => { t.rm_condition(&character, &cond); Ok(()) },
-        Command::Mod { name, new_name, init, player, dex, health } => {
+        Command::Mod { name, new_name, init, player, health } => {
             if let Some(init) = init {
                 t.change_init(&name, init)?;
             }
 
             if let Some(player) = player {
                 t.set_player(&name, player)?;
-            }
-
-            if let Some(dex) = dex {
-                t.change_dex(&name, dex)?;
             }
 
             if let Some(health) = health {

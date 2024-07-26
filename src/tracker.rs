@@ -257,10 +257,6 @@ impl<S: Saver> Tracker<S> {
         self.unchecked_change(old, |chr| { chr.name = new; })
     }
 
-    pub fn change_dex(&mut self, name: &str, dex: i32) -> Result<Option<MovedStatus>> {
-        self.change(name, |chr| chr.dex = Some(dex))
-    }
-
     pub fn change_init(&mut self, name: &str, init: i32) -> Result<Option<MovedStatus>> {
         self.change(name, |chr| chr.init = init)
     }

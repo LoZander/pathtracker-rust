@@ -63,7 +63,6 @@ pub fn parse_input(input: &str) -> ParseResult {
                     name, 
                     init,  
                     player: map.get::<PlayerArg>().is_some_and(|x| x.0), 
-                    dex: map.get::<DexArg>().map(|x| x.0),
                     health: map.get::<HealthArg>().map(|x| x.0)
                 })
             },
@@ -86,7 +85,6 @@ pub fn parse_input(input: &str) -> ParseResult {
                 new_name: map.get::<NameArg>().map(|x| x.0.clone()),
                 init: map.get::<InitArg>().map(|x| x.0),
                 player: map.get::<PlayerArg>().map(|x| x.0),
-                dex: map.get::<DexArg>().map(|x| x.0),
                 health: map.get::<HealthArg>().map(|x| x.0),
             })
         }
@@ -104,7 +102,6 @@ fn unparse(name: &[&str]) -> String {
 }
 
 struct HealthArg(u32);
-struct DexArg(i32);
 struct NameArg(String);
 struct InitArg(i32);
 struct PlayerArg(bool);
@@ -132,10 +129,6 @@ type ExtraArgResult = Result<(), ExtraArgError>;
 fn parse_extra_arg(map: &mut AnyMap, opt: &&str) -> ExtraArgResult {
     let words: Vec<&str> = opt.split_whitespace().collect();
     match &words[..] {
-        ["d" | "dex", x] => {
-            let x: i32 = x.parse().map_err(|err| ExtraArgError::ParseIntError { typ: "-d/-dex".into(), val: (*x).to_string(), source: err })?;
-            map.insert(DexArg(x));
-        },
         ["h" | "health", x] => {
             let x: u32 = x.parse().map_err(|err| ExtraArgError::ParseIntError { typ: "-h/-health".into(), val: (*x).to_string(), source: err })?;
             map.insert(HealthArg(x));
