@@ -115,7 +115,7 @@ pub fn parse(args: &[&str]) -> Result<Command> {
         Some(s) => Err(Error::InvalidKeyword {
             ty: "condition",
             expected: "add, rm or mod",
-            actual: s.to_string(),
+            actual: (*s).to_string(),
         }),
         None => Err(Error::MissingKeyword("condition"))
     }
@@ -191,7 +191,7 @@ fn parse_duration(term_action: &[&str]) -> Result<Duration> {
     match term_action {
         [n, unit] => {
             let number = n.parse().map_err(|err| Error::ParseInt { 
-                arg: n.to_string(), 
+                arg: (*n).to_string(), 
                 source: err
             })?;
             let dur = match *unit {
@@ -236,7 +236,7 @@ mod tests {
                 .build()
         };
 
-        assert_eq!(expected, command)
+        assert_eq!(expected, command);
     }
 
     #[test]
@@ -251,7 +251,7 @@ mod tests {
                 .build()
         };
 
-        assert_eq!(expected, command)
+        assert_eq!(expected, command);
     }
 
     #[test]
@@ -266,7 +266,7 @@ mod tests {
                 .build()
         };
 
-        assert_eq!(expected, command)
+        assert_eq!(expected, command);
     }
 
     #[test]
@@ -282,7 +282,7 @@ mod tests {
                 .build()
         };
 
-        assert_eq!(expected, command)
+        assert_eq!(expected, command);
     }
 
     #[test]
@@ -298,7 +298,7 @@ mod tests {
                 .build()
         };
 
-        assert_eq!(expected, command)
+        assert_eq!(expected, command);
     }
 
     #[test]
@@ -313,14 +313,14 @@ mod tests {
                 .build()
         };
 
-        assert_eq!(expected, command)
+        assert_eq!(expected, command);
     }
 
     #[test]
     fn add_frightened_negative_2_on_bob() {
         let input = ["add",v_conds::FRIGHTENED,"-2","on","Bob"];
         let result = parse(&input);
-        assert!(matches!(result, Err(Error::ParseInt { .. })))
+        assert!(matches!(result, Err(Error::ParseInt { .. })));
     }
 
     mod duration {
@@ -328,52 +328,52 @@ mod tests {
 
         #[test]
         fn five_turns_parses() {
-            assert_eq!(Ok(Duration::from_turns(5)), parse_duration(&["5","turns"]))
+            assert_eq!(Ok(Duration::from_turns(5)), parse_duration(&["5","turns"]));
         }
 
         #[test]
         fn one_turn_parses() {
-            assert_eq!(Ok(Duration::from_turns(1)), parse_duration(&["1","turn"]))
+            assert_eq!(Ok(Duration::from_turns(1)), parse_duration(&["1","turn"]));
         }
 
         #[test]
         fn two_t_parses() {
-            assert_eq!(Ok(Duration::from_turns(2)), parse_duration(&["2","t"]))
+            assert_eq!(Ok(Duration::from_turns(2)), parse_duration(&["2","t"]));
         }
 
         #[test]
         fn three_minutes_parses() {
-            assert_eq!(Ok(Duration::from_minutes(3)), parse_duration(&["3","minutes"]))
+            assert_eq!(Ok(Duration::from_minutes(3)), parse_duration(&["3","minutes"]));
         }
 
         #[test]
         fn one_min_parses() {
-            assert_eq!(Ok(Duration::from_minutes(1)), parse_duration(&["1","min"]))
+            assert_eq!(Ok(Duration::from_minutes(1)), parse_duration(&["1","min"]));
         }
 
         #[test]
         fn one_minute_parses() {
-            assert_eq!(Ok(Duration::from_minutes(1)), parse_duration(&["1","minute"]))
+            assert_eq!(Ok(Duration::from_minutes(1)), parse_duration(&["1","minute"]));
         }
 
         #[test]
         fn ten_m_parses() {
-            assert_eq!(Ok(Duration::from_minutes(10)), parse_duration(&["10","m"]))
+            assert_eq!(Ok(Duration::from_minutes(10)), parse_duration(&["10","m"]));
         }
 
         #[test]
         fn twelve_hours_parses() {
-            assert_eq!(Ok(Duration::from_hours(12)), parse_duration(&["12","hours"]))
+            assert_eq!(Ok(Duration::from_hours(12)), parse_duration(&["12","hours"]));
         }
 
         #[test]
         fn one_hour_parses() {
-            assert_eq!(Ok(Duration::from_hours(1)), parse_duration(&["1","hour"]))
+            assert_eq!(Ok(Duration::from_hours(1)), parse_duration(&["1","hour"]));
         }
 
         #[test]
         fn five_h_parses() {
-            assert_eq!(Ok(Duration::from_hours(5)), parse_duration(&["5","h"]))
+            assert_eq!(Ok(Duration::from_hours(5)), parse_duration(&["5","h"]));
         }
     }
 }

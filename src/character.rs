@@ -10,16 +10,17 @@ pub struct Health {
 }
 
 impl Health {
+    #[must_use]
     pub fn new(max: u32) -> Self {
         Self { max, current: max, temp: 0 }
     }
 
     fn heal(&mut self, x: u32) {
-        self.current = self.max.min(self.current - x)
+        self.current = self.max.min(self.current - x);
     }
 
     fn damage(&mut self, x: u32) {
-        self.current = self.max.min(self.current - x)
+        self.current = self.max.min(self.current - x);
     } 
 }
 
@@ -85,6 +86,7 @@ impl ChrBuilder {
         }
     }
 
+    #[must_use]
     pub fn build(self) -> Chr {
         Chr {
             name: self.name,
@@ -94,6 +96,7 @@ impl ChrBuilder {
         }
     }
     
+    #[must_use]
     pub fn with_health(mut self, health: Health) -> Self {
         self.health = Some(health);
         self
@@ -110,7 +113,7 @@ mod tests {
         let c1 = Chr::builder("a", 20, true).build();
         let c2 = Chr::builder("b", 10, true).build();
 
-        assert_eq!(Ordering::Less, c1.cmp(&c2))
+        assert_eq!(Ordering::Less, c1.cmp(&c2));
     }
 
     #[test]
@@ -118,6 +121,6 @@ mod tests {
         let c1 = Chr::builder("a", 10, true).build();
         let c2 = Chr::builder("b", 20, true).build();
 
-        assert_eq!(Ordering::Greater, c1.cmp(&c2))
+        assert_eq!(Ordering::Greater, c1.cmp(&c2));
     }
 }

@@ -15,6 +15,7 @@ pub struct ConditionManager {
 }
 
 impl ConditionManager {
+    #[must_use]
     pub fn new() -> Self {
         ConditionManager {
             conds: HashSet::new(),
@@ -23,13 +24,12 @@ impl ConditionManager {
     pub fn add_condition(&mut self, character: &str, cond: Condition) {
         let exists_ge = self.get_conditions(character)
             .get(&cond)
-            .map(|current| match (current,&cond) {
+            .is_some_and(|current| match (current,&cond) {
                 (Condition::Valued { cond: c1, level: l1, .. }, 
                     Condition::Valued { cond: c2, level: l2, .. }) => c1 == c2 && l1.ge(l2),
                 (Condition::NonValued { cond: c1, .. }, Condition::NonValued { cond: c2, .. }) => c1 == c2,
                 _ => false
-            })
-            .unwrap_or(false);
+            });
 
         if !exists_ge {
             self.conds.insert((character.to_string(), cond));
@@ -37,7 +37,7 @@ impl ConditionManager {
     }
 
     pub fn start_of_turn(&mut self, character: &str) {
-        self.handle_turn_event(TurnEvent::StartOfTurn(character.to_string()))
+        self.handle_turn_event(&TurnEvent::StartOfTurn(character.to_string()));
     }
 
     pub fn end_of_turn(&mut self, character: &str) -> Option<Damage> {
@@ -48,7 +48,7 @@ impl ConditionManager {
             })
             .sum();
 
-        self.handle_turn_event(TurnEvent::EndOfTurn(character.to_string()));
+        self.handle_turn_event(&TurnEvent::EndOfTurn(character.to_string()));
 
         match damage {
             0 => None,
@@ -56,7 +56,7 @@ impl ConditionManager {
         }
     }
 
-    fn handle_turn_event(&mut self, event: TurnEvent) {
+    fn handle_turn_event(&mut self, event: &TurnEvent) {
         let new_conds = self
             .conds
             .clone()
@@ -104,11 +104,11 @@ impl ConditionManager {
                         }
                     }
                     (_, Condition::Valued { term: ValuedTerm::Until(e), .. } |
-                        Condition::NonValued { term: NonValuedTerm::Until(e), .. }) if e == event => None,
+                        Condition::NonValued { term: NonValuedTerm::Until(e), .. }) if &e == event => None,
                     (affected, cond @ 
                         (Condition::Valued { term: ValuedTerm::Until(_), .. } |
                         Condition::NonValued { term: NonValuedTerm::Until(_), .. })) => Some((affected,cond)),
-                    (affected, Condition::Valued { term: ValuedTerm::Reduced(e, reduction), level, cond }) if e == event => {
+                    (affected, Condition::Valued { term: ValuedTerm::Reduced(e, reduction), level, cond }) if &e == event => {
                         let new_cond = Condition::Valued { 
                             cond, 
                             term: ValuedTerm::Reduced(e, reduction), 

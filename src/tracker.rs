@@ -26,8 +26,8 @@ pub enum Error {
 impl PartialEq for Error {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Error::AddDupError(x), Error::AddDupError(y)) => x == y,
-            (Error::RmNoneError(x), Error::RmNoneError(y)) => x == y,
+            (Error::AddDupError(x), Error::AddDupError(y)) |
+            (Error::RmNoneError(x), Error::RmNoneError(y)) |
             (Error::ChangeNoneError(x), Error::ChangeNoneError(y)) => x == y,
             (Error::RenameDupError { old: old1, new: new1 }, 
                 Error::RenameDupError { old: old2, new: new2 }) => 
@@ -98,15 +98,19 @@ pub struct TrackerBuilder<S: Saver> {
 }
 
 impl<S: Saver> TrackerBuilder<S> {
+    #[must_use]
     pub fn new(saver: S) -> Self {
         Self { chrs: vec![], in_turn_index: None, saver, cm: ConditionManager::new() }
     }
 
+    #[must_use]
     pub fn with_saver(mut self, saver: S) -> Self {
         self.saver = saver;
         self
     }
 
+
+    #[must_use]
     pub fn with_chrs(mut self, chrs: impl Into<Vec<Chr>>) -> Self {
         let mut chrs: Vec<Chr> = chrs.into();
         chrs.sort();
@@ -126,6 +130,7 @@ impl<S: Saver> TrackerBuilder<S> {
 }
 
 impl<S: Saver> Tracker<S> {
+    #[must_use]
     pub fn builder() -> TrackerBuilder<S> {
         TrackerBuilder::new(S::default())
     }
@@ -148,7 +153,7 @@ impl<S: Saver> Tracker<S> {
             if let Some(damage) = damage {
                 // It can only fail if there is no character by the name,
                 // which there naturally will always be in this if body
-                self.damage(&chr.name, damage.into())?
+                self.damage(&chr.name, damage.into())?;
             }
         }
 
@@ -160,7 +165,7 @@ impl<S: Saver> Tracker<S> {
         }
 
         if let Some(chr) = self.get_in_turn().cloned() {
-            self.cm.start_of_turn(&chr.name)
+            self.cm.start_of_turn(&chr.name);
         }
         self.auto_save()?;
         Ok(self.get_in_turn())
@@ -178,7 +183,7 @@ impl<S: Saver> Tracker<S> {
 
         if let Some(i) = self.in_turn_index {
             if chr.init > self.chrs[i].init {
-                self.in_turn_index = Some(i + 1)
+                self.in_turn_index = Some(i + 1);
             }
         }
 
@@ -206,7 +211,7 @@ impl<S: Saver> Tracker<S> {
     }
 
     pub fn rm_condition(&mut self, character: &str, condition: &Condition) {
-        self.cm.remove_condition(character, condition)
+        self.cm.remove_condition(character, condition);
     }
     
     pub fn rm_chr(&mut self, name: &str) -> Result<()> {
@@ -337,7 +342,7 @@ impl<S: Saver> Tracker<S> {
         Ok(())
     }
 
-    pub fn load(saver: S, file: impl Into<String>) -> Result<Self> {
+    pub fn load(saver: &S, file: impl Into<String>) -> Result<Self> {
         let data: TrackerData = saver.load(format!("saves/{}", file.into()))?;
         let t: Tracker<S> = data.into();
 
