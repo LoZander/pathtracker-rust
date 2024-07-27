@@ -118,7 +118,7 @@ impl ConditionManager {
     }
 
     pub fn remove_condition(&mut self, character: &str, condition: &Condition) {
-        self.conds.retain(|(affected, cond)| affected != character || cond != condition)
+        self.conds.retain(|(affected, cond)| affected != character || cond != condition);
     }
 
     pub fn rename_character(&mut self, character: &str, new_name: &str) {
@@ -131,14 +131,14 @@ impl ConditionManager {
                 }
             })
             .collect();
-        self.conds = conds
+        self.conds = conds;
     }
 
     pub fn remove_character(&mut self, character: &str) {
-        self.conds
-            .retain(|(affected, _)| affected != character)
+        self.conds.retain(|(affected, _)| affected != character);
     }
 
+    #[must_use]
     pub fn get_conditions<'a>(&'a self, character: &str) -> HashSet<&'a Condition> {
         self.conds.iter()
             .filter(|(affected, _)| affected == character)

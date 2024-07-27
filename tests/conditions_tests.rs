@@ -11,7 +11,7 @@ fn add_condition_adds() {
 
     cm.add_condition("bob", condition.clone());
 
-    assert!(cm.get_conditions("bob").contains(&condition))
+    assert!(cm.get_conditions("bob").contains(&condition));
 }
 
 #[test]
@@ -26,7 +26,7 @@ fn remove_condition_removes() {
     cm.add_condition("bob", condition.clone());
     cm.remove_condition("bob", &condition);
 
-    assert!(!cm.get_conditions("bob").contains(&condition))
+    assert!(!cm.get_conditions("bob").contains(&condition));
 }
 
 #[test]
@@ -49,7 +49,7 @@ fn remove_bleed_doesnt_remove_frighten() {
     cm.add_condition("bob", frightened.clone());
     cm.remove_condition("bob", &frightened);
 
-    assert!(cm.get_conditions("bob").contains(&bleed))
+    assert!(cm.get_conditions("bob").contains(&bleed));
 }
 
 #[test]
@@ -63,7 +63,7 @@ fn alice_manual_condition_remains_after_alice_turn_ends() {
     cm.add_condition("Alice", bleed.clone());
     cm.end_of_turn("Alice");
 
-    assert!(cm.get_conditions("Alice").contains(&bleed))
+    assert!(cm.get_conditions("Alice").contains(&bleed));
 }
 
 #[test]
@@ -76,7 +76,7 @@ fn alice_manual_condition_remains_after_alice_turn_starts() {
     cm.add_condition("Alice", bleed.clone());
     cm.start_of_turn("Alice");
 
-    assert!(cm.get_conditions("Alice").contains(&bleed))
+    assert!(cm.get_conditions("Alice").contains(&bleed));
 }
 
 #[test]
@@ -85,7 +85,7 @@ fn alice_manual_condition_remains_after_bob_turn_ends() {
     let blinded = Condition::builder().condition(NonValuedCondition::Blinded).build();
     cm.add_condition("Alice", blinded.clone());
     cm.end_of_turn("Bob");
-    assert!(cm.get_conditions("Alice").contains(&blinded))
+    assert!(cm.get_conditions("Alice").contains(&blinded));
 }
 
 #[test]
@@ -169,7 +169,7 @@ fn one_turn_nonvalued_condition_duration_removed_after_character_end_of_turn() {
     cm.add_condition("Alice", blinded.clone());
 
     cm.end_of_turn("Alice");
-    assert_eq!(None, cm.get_conditions("Alice").get(&blinded))
+    assert_eq!(None, cm.get_conditions("Alice").get(&blinded));
 }
 
 #[test]

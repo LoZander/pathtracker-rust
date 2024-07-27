@@ -15,58 +15,72 @@ pub struct Duration {
 }
 
 impl Duration {
+    #[must_use]
     pub fn builder() -> DurationBuilder {
         DurationBuilder::default()
     }
 
+    #[must_use]
     pub fn from_seconds(n: Num) -> Self {
         Self::builder().with_seconds(n).build()
     }
 
+    #[must_use]
     pub fn from_actions(n: Num) -> Self {
         Self::builder().with_actions(n).build()
     }
 
+    #[must_use]
     pub fn from_turns(n: Num) -> Self {
         Self::builder().with_turns(n).build()
     }
 
+    #[must_use]
     pub fn from_minutes(n: Num) -> Self {
         Self::builder().with_minutes(n).build()
     }
 
+    #[must_use]
     pub fn from_hours(n: Num) -> Self {
         Self::builder().with_hours(n).build()
     }
 
+    #[must_use]
     pub fn from_days(n: Num) -> Self {
         Self::builder().with_days(n).build()
     }
 
+    #[must_use]
     pub fn in_seconds(self) -> Num {
         self.seconds + 2 * self.in_actions()
     }
 
+    #[must_use]
     pub fn in_actions(self) -> Num {
         self.actions + 3 * self.in_turns()
     }
 
+    #[must_use]
     pub fn in_turns(self) -> Num {
         self.turns + 10 * self.in_minutes()
     }
 
+    #[must_use]
     pub fn in_minutes(self) -> Num {
         self.minutes + 60 * self.in_hours()
     }
 
+    #[must_use]
     pub fn in_hours(self) -> Num {
         self.hours + 24 * self.in_days()
     }
 
+    #[must_use]
     pub fn in_days(self) -> Num {
         self.days
     }
 
+    #[must_use]
     pub fn saturating_sub(self, rhs: Self) -> Self {
         let x = self.in_seconds();
         let y = rhs.in_seconds();
@@ -110,6 +124,7 @@ pub struct DurationBuilder {
 }
 
 impl DurationBuilder {
+    #[must_use]
     pub fn build(self) -> Duration {
         let seconds  = self.seconds.unwrap_or(0);
         let actions  = self.actions.unwrap_or(0);
@@ -123,26 +138,32 @@ impl DurationBuilder {
         raw.normalize()
     }
 
+    #[must_use]
     pub fn with_seconds(self, n: Num) -> Self {
         Self { seconds: Some(n), ..self }
     }
 
+    #[must_use]
     pub fn with_actions(self, n: Num) -> Self {
         Self { actions: Some(n), ..self }
     }
     
+    #[must_use]
     pub fn with_turns(self, n: Num) -> Self {
         Self { turns: Some(n), ..self }
     }
     
+    #[must_use]
     pub fn with_minutes(self, n: Num) -> Self {
         Self { minutes: Some(n), ..self }
     }
 
+    #[must_use]
     pub fn with_hours(self, n: Num) -> Self {
         Self { hours: Some(n), ..self }
     }
 
+    #[must_use]
     pub fn with_days(self, n: Num) -> Self {
         Self { days: Some(n), ..self }
     }
@@ -213,31 +234,31 @@ mod tests{
 
     #[test]
     fn duration_from_5_turns_gives_duration_of_5_turns() {
-        assert_eq!(5, Duration::from_turns(5).in_turns())
+        assert_eq!(5, Duration::from_turns(5).in_turns());
     }
 
     #[test]
     fn duration_from_1_min_gives_duration_of_30_turns() {
-        assert_eq!(10, Duration::from_minutes(1).in_turns())
+        assert_eq!(10, Duration::from_minutes(1).in_turns());
     }
 
     #[test]
     fn duration_from_1_turn_gives_duration_of_3_actions() {
-        assert_eq!(3, Duration::from_turns(1).in_actions())
+        assert_eq!(3, Duration::from_turns(1).in_actions());
     }
 
     #[test]
     fn duration_from_6_seconds_gives_duration_of_1_turn() {
-        assert_eq!(1, Duration::from_seconds(6).in_turns())
+        assert_eq!(1, Duration::from_seconds(6).in_turns());
     }
 
     #[test]
     fn duration_from_1_action_gives_duration_of_2_seconds() {
-        assert_eq!(2, Duration::from_actions(1).in_seconds())
+        assert_eq!(2, Duration::from_actions(1).in_seconds());
     }
 
     #[test]
     fn duration_from_1_day_gives_duration_of_14_400_turns() {
-        assert_eq!(14_400, Duration::from_days(1).in_turns())
+        assert_eq!(14_400, Duration::from_days(1).in_turns());
     }
 }

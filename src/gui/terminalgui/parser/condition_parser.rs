@@ -92,8 +92,7 @@ pub fn parse(args: &[&str]) -> Result<Command> {
         },
         Some(&"rm") => {
             match args.get(1..) {
-                Some([cond, _, "from", character @ ..]) |
-                Some([cond, "from", character @ ..]) => {
+                Some([cond, _, "from", character @ ..] | [cond, "from", character @ ..]) => {
                     nonvalued_conditions::parse(cond)
                         .map(|cond| Condition::builder().condition(cond).build())
                         .or(valued_conditions::parse(cond).map(|cond| Condition::builder().condition(cond).value(1).build()))

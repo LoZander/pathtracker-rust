@@ -13,6 +13,7 @@ pub enum Condition {
 }
 
 impl Condition {
+    #[must_use]
     pub fn builder() -> ConditionBuilder {
         ConditionBuilder::default()
     }
@@ -280,12 +281,14 @@ pub struct ConditionBuilder<Cond=Empty,Value=Empty,Term=Empty> {
 }
 
 impl Default for ConditionBuilder<Empty,Empty,Empty> {
+    #[must_use]
     fn default() -> Self {
         Self { cond: Empty, value: Empty, term: Empty }
     }
 }
 
 impl ConditionBuilder<Empty,Empty,Empty> {
+    #[must_use]
     pub fn condition<Cond: CondType>(self, cond: Cond) -> ConditionBuilder<Cond,Empty,Empty> {
         ConditionBuilder {
             cond,
@@ -296,6 +299,7 @@ impl ConditionBuilder<Empty,Empty,Empty> {
 }
 
 impl<Term> ConditionBuilder<NonValuedCondition,Empty,Term> {
+    #[must_use]
     pub fn term(self, term: NonValuedTerm) -> ConditionBuilder<NonValuedCondition,Empty,NonValuedTerm> {
         ConditionBuilder {
             cond: self.cond,
@@ -306,6 +310,7 @@ impl<Term> ConditionBuilder<NonValuedCondition,Empty,Term> {
 }
 
 impl ConditionBuilder<NonValuedCondition,Empty,NonValuedTerm> {
+    #[must_use]
     pub fn build(self) -> Condition {
         Condition::NonValued {
             cond: self.cond,
@@ -315,6 +320,7 @@ impl ConditionBuilder<NonValuedCondition,Empty,NonValuedTerm> {
 }
 
 impl ConditionBuilder<NonValuedCondition,Empty,Empty> {
+    #[must_use]
     pub fn build(self) -> Condition {
         Condition::NonValued {
             cond: self.cond,
@@ -325,6 +331,7 @@ impl ConditionBuilder<NonValuedCondition,Empty,Empty> {
 
 
 impl<Value,Term> ConditionBuilder<ValuedCondition,Value,Term> {
+    #[must_use]
     pub fn value(self, value: u8) -> ConditionBuilder<ValuedCondition,u8,Term> {
         ConditionBuilder {
             cond: self.cond,
@@ -333,6 +340,7 @@ impl<Value,Term> ConditionBuilder<ValuedCondition,Value,Term> {
         }
     }
 
+    #[must_use]
     pub fn term(self, term: ValuedTerm) -> ConditionBuilder<ValuedCondition,Value,ValuedTerm> {
         ConditionBuilder {
             cond: self.cond,
@@ -343,6 +351,7 @@ impl<Value,Term> ConditionBuilder<ValuedCondition,Value,Term> {
 }
 
 impl ConditionBuilder<ValuedCondition,u8,ValuedTerm> {
+    #[must_use]
     pub fn build(self) -> Condition {
         Condition::Valued {
             cond: self.cond,
@@ -353,6 +362,7 @@ impl ConditionBuilder<ValuedCondition,u8,ValuedTerm> {
 }
 
 impl ConditionBuilder<ValuedCondition,u8,Empty> {
+    #[must_use]
     pub fn build(self) -> Condition {
         Condition::Valued {
             cond: self.cond,
