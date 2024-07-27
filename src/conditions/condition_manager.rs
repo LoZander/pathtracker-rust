@@ -63,9 +63,6 @@ impl ConditionManager {
             .into_iter()
             .filter_map(|(affected, cond)| {
                 match (affected, cond) {
-                    (affected, cond @ 
-                        (Condition::Valued { term: ValuedTerm::Manual, .. } | 
-                        Condition::NonValued { term: NonValuedTerm::Manual, .. })) => Some((affected, cond)),
                     (affected, condition @ Condition::Valued { term: ValuedTerm::For(dur), cond, level }) => {
                         match &event {
                             TurnEvent::EndOfTurn(c) if c == &affected => {
@@ -105,9 +102,6 @@ impl ConditionManager {
                     }
                     (_, Condition::Valued { term: ValuedTerm::Until(e), .. } |
                         Condition::NonValued { term: NonValuedTerm::Until(e), .. }) if &e == event => None,
-                    (affected, cond @ 
-                        (Condition::Valued { term: ValuedTerm::Until(_), .. } |
-                        Condition::NonValued { term: NonValuedTerm::Until(_), .. })) => Some((affected,cond)),
                     (affected, Condition::Valued { term: ValuedTerm::Reduced(e, reduction), level, cond }) if &e == event => {
                         let new_cond = Condition::Valued { 
                             cond, 
@@ -116,7 +110,7 @@ impl ConditionManager {
                         };
                         Some((affected, new_cond))
                     },
-                    (affected, cond @ Condition::Valued { term: ValuedTerm::Reduced(_,_), .. }) => Some((affected, cond))
+                    (affected, cond) => Some((affected, cond))
                 }
             })
             .collect();
