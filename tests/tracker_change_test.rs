@@ -16,7 +16,7 @@ fn rename_renames() -> tracker::Result<()> {
 }
 
 #[test]
-fn rename_into_already_existing_fails() -> tracker::Result<()> {
+fn rename_into_already_existing_fails() {
     let mut t: Tracker<NoSaver> = Tracker::builder().with_chrs(vec![
         Chr::builder("Link", 24, true).build(),
         Chr::builder("Ganon", 30, false).build(),
@@ -24,8 +24,6 @@ fn rename_into_already_existing_fails() -> tracker::Result<()> {
 
     let res = t.rename("Link", "Ganon");
     assert_eq!(Err(tracker::Error::RenameDupError{ old: "Link".into(), new: "Ganon".into() }), res);
-
-    Ok(())
 }
 
 #[test]
@@ -73,7 +71,8 @@ fn change_init_preserves_sorting() -> tracker::Result<()> {
         lucifer.clone(),
         link.clone(),
         hugo.clone(),
-    ]).build(); println!("{:?}", t);
+    ]).build();
+
     t.change_init("Lucifer", 19)?;
 
     assert_eq!("Link", t.end_turn().unwrap().unwrap().name);
