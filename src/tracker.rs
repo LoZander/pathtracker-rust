@@ -98,11 +98,13 @@ pub struct TrackerBuilder<S: Saver> {
 }
 
 impl<S: Saver> TrackerBuilder<S> {
+    /// Creates a new [`TrackerBuilder<S>`].
     #[must_use]
     pub fn new(saver: S) -> Self {
         Self { chrs: vec![], in_turn_index: None, saver, cm: ConditionManager::new() }
     }
 
+    /// Adds a [`saver`] [`S`] to the [`TrackerBuilder<S>`].
     #[must_use]
     pub fn with_saver(mut self, saver: S) -> Self {
         self.saver = saver;
@@ -110,6 +112,7 @@ impl<S: Saver> TrackerBuilder<S> {
     }
 
 
+    /// Adds a list of characters [`chrs`] to the [`TrackerBuilder<S>`].
     #[must_use]
     pub fn with_chrs(mut self, chrs: impl Into<Vec<Chr>>) -> Self {
         let mut chrs: Vec<Chr> = chrs.into();
@@ -118,6 +121,7 @@ impl<S: Saver> TrackerBuilder<S> {
         self
     }
 
+    /// Builds a [`Tracker<S>`] from a [`TrackerBuilder<S>`].
     pub fn build(self) -> Tracker<S> {
 
         Tracker {
@@ -130,23 +134,36 @@ impl<S: Saver> TrackerBuilder<S> {
 }
 
 impl<S: Saver> Tracker<S> {
+    /// Creates a [`TrackerBuilder<S>`] for the purpose of the initialisation 
+    /// of a [`Tracker<S>`].
     #[must_use]
     pub fn builder() -> TrackerBuilder<S> {
         TrackerBuilder::new(S::default())
     }
 
+    /// Returns a reference to the character [`Chr`] with the given [`name`],
+    /// if such a one exists.
     pub fn get_chr(&self, name: &str) -> Option<&Chr> {
         self.chrs.iter().find(|chr| chr.name == name)
     }
 
+    /// Returns the position on the tracker order of the character with the
+    /// given [`name`], if such a one exists.
     fn pos(&self, name: &str) -> Option<usize> {
         self.chrs.iter().enumerate().find(|(_,x)| x.name == name).map(|e| e.0)
     }
 
+    /// Returns a reference to characters of this [`Tracker<S>`].
     pub fn get_chrs(&self) -> &[Chr] {
         &self.chrs[..]
     }
 
+    /// Ends the turn and returns the new character in turn.
+    /// If this [`Tracker<S>`] is empty, nothing happens on [`None`] is returned.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if auto saving fails.
     pub fn end_turn(&mut self) -> Result<Option<&Chr>> {
         if let Some(chr) = self.get_in_turn().cloned() {
             let damage = self.cm.end_of_turn(&chr.name);
@@ -175,6 +192,11 @@ impl<S: Saver> Tracker<S> {
         self.in_turn_index.and_then(|i| self.chrs.get(i))
     }
 
+    /// Adds a character [`chr`] to this [`Tracker<S>`].
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if auto saving fails.
     pub fn add_chr(&mut self, chr: Chr) -> Result<()> {
         if self.get_chr(&chr.name).is_some() { 
             return Err(Error::AddDupError(chr.name))
@@ -195,6 +217,13 @@ impl<S: Saver> Tracker<S> {
         Ok(())
     }
 
+    /// Adds a [`Condition`] to the character named [`name`].
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if
+    /// - There is no character named [`name`]
+    /// - Auto saving fails.
     pub fn add_condition(&mut self, name: &str, cond: Condition) -> Result<()> {
         match self.get_chr(name) {
             None => Err(Error::ChangeNoneError(name.to_string())),
@@ -206,14 +235,33 @@ impl<S: Saver> Tracker<S> {
         }
     }
 
+    /// Returns the conditions of a character with the given name.
+    ///
+    /// Provided the name of a character, a [`HashSet<&Condition>`] of
+    /// their conditions is returned. If there is no character with the given name,
+    /// an empty set is returned.
     pub fn get_conditions(&self, character: &str) -> HashSet<&Condition> {
         self.cm.get_conditions(character)
     }
 
+    /// Removes the given condition type from the character with the givne name.
+    ///
+    /// If there is no character with the given name, or the character has no
+    /// such condition, nothing happens.
     pub fn rm_condition(&mut self, character: &str, condition: &Condition) {
         self.cm.remove_condition(character, condition);
     }
     
+    /// Removes a character with the given [`name`] from this [`Tracker<S>`].
+    ///
+    /// If the removed character is the one in turn, this ends the given
+    /// characters turn.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if 
+    /// - There is no character with the given [`name`]
+    /// - Auto saving fails.
     pub fn rm_chr(&mut self, name: &str) -> Result<()> {
         let rm_index = self.chrs.iter()
             .position(|chr| chr.name == name)
@@ -250,6 +298,13 @@ impl<S: Saver> Tracker<S> {
         Ok(())
     }
 
+    /// Renames a the character named [`old`], giving it the name [`new`].
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if
+    /// - There's no character with the given [`name`] 
+    /// - Auto saving fails.
     pub fn rename(&mut self, old: &str, new: impl Into<String>) -> Result<()> {
         let new: String = new.into();
 
@@ -262,29 +317,71 @@ impl<S: Saver> Tracker<S> {
         self.unchecked_change(old, |chr| { chr.name = new; })
     }
 
+    /// Changes the initiative of the character.
+    ///
+    /// Changes the initiative of the character named [`name`] to [`init`],
+    /// and returns a [`MovedStatus`].
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if 
+    /// - There's no character with the given [`name`]
+    /// - Auto saving fails.
     pub fn change_init(&mut self, name: &str, init: i32) -> Result<Option<MovedStatus>> {
         self.change(name, |chr| chr.init = init)
     }
 
+    /// Marks a character named as a player character.
+    ///
+    /// Marks the character given by the name [`name`] as a player character.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if 
+    /// - There's no character with the given [`name`]
+    /// - Auto saving fails.
     pub fn set_player(&mut self, name: &str, player: bool) -> Result<()> {
         self.unchecked_change(name, |chr| chr.player = player)
     }
 
-    pub fn change_max_health(&mut self, name: &str, health: u32) -> Result<()> {
+    /// Changes the max health of the character.
+    ///
+    /// Changes the max health of the character named [`name`] to [`max`].
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if 
+    /// - There's no character with the given [`name`] 
+    /// - Auto saving fails.
+    pub fn change_max_health(&mut self, name: &str, max: u32) -> Result<()> {
         self.unchecked_change(name, |chr| {
             if let Some(hp) = &mut chr.health {
-                hp.max = health;
-                hp.current = hp.current.min(health);
+                hp.max = max;
+                hp.current = hp.current.min(max);
             } else {
-                chr.health = Some(Health::new(health));
+                chr.health = Some(Health::new(max));
             }
         })
     }
 
-    pub fn damage(&mut self, name: &str, damage: u32) -> Result<()> {
-        self.unchecked_change(name, |chr| { chr.damage(damage); })
+    /// Damages the character with the given [`name`] by the given [`amount`].
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if .
+    /// - There's no character with the given [`name`]
+    /// - Auto saving fails.
+    pub fn damage(&mut self, name: &str, amount: u32) -> Result<()> {
+        self.unchecked_change(name, |chr| { chr.damage(amount); })
     }
 
+    /// Heals the character with the given [`name`] by the given [`amount`].
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if
+    /// - There's no character wit hthe given [`name`]
+    /// - Auto saving fails.
     pub fn heal(&mut self, name: &str, heal: u32) -> Result<()> {
         self.unchecked_change(name, |chr| { chr.heal(heal); })
     }
@@ -331,9 +428,14 @@ impl<S: Saver> Tracker<S> {
         Ok(None)
     }
 
-    pub fn save(&self, file: impl Into<String>) -> Result<()> {
+    /// Saves this [`Tracker<S>`] to the file by the given [`file_name`].
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if [`saver.save`] fails.
+    pub fn save(&self, file_name: impl Into<String>) -> Result<()> {
         let data: TrackerData = self.to_owned().into();
-        self.saver.save(&data, format!("saves/{}", file.into()))?;
+        self.saver.save(&data, format!("saves/{}", file_name.into()))?;
         Ok(())
     }
 
@@ -342,8 +444,13 @@ impl<S: Saver> Tracker<S> {
         Ok(())
     }
 
-    pub fn load(saver: &S, file: impl Into<String>) -> Result<Self> {
-        let data: TrackerData = saver.load(format!("saves/{}", file.into()))?;
+    /// Loads a [`Tracker<S>`] from a file by the given [`file_name`].
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if [`saver.load`] fails.
+    pub fn load(saver: &S, file_name: impl Into<String>) -> Result<Self> {
+        let data: TrackerData = saver.load(format!("saves/{}", file_name.into()))?;
         let t: Tracker<S> = data.into();
 
         Ok(t)

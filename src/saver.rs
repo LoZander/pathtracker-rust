@@ -11,11 +11,11 @@ pub enum Error {
     #[error("couldn't load savefile at `{0}` due to I/O error `{1}`")]
     LoadIOError(String, #[source] io::Error),
     #[error("couldn't save savefile at `{0}` due to I/O error `{1}`")]
-    SaveIOError(String, #[source] io::Error),
-    #[error("couldn't load savefile at `{0}` due to corruption `{1}`")]
+    InvalidDirPath(String, #[source] io::Error),
+    #[error("couldn't load savefile at `{0}` due to invalid directory path `{1}`")]
     LoadCorruptSave(String, #[source] serde_json::Error),
-    #[error("couldn't save savefile at `{0}` due to corruption of data `{1}`")]
-    SaveCorruptData(String, serde_json::Error),
+    #[error("couldn't save savefile at `{0}` due to serialisation error `{1}`")]
+    SerialisationError(String, serde_json::Error),
 }
 
 pub type Result<T> = std::result::Result<T,Error>;
@@ -42,9 +42,9 @@ pub struct FileSaver;
 impl Saver for FileSaver {
     fn save<D: Serialize + DeserializeOwned>(&self, data: &D, dir: impl Into<String>) -> Result<()> {                
         let dir: String = dir.into();
-        let data = serde_json::to_string_pretty(data).map_err(|err| Error::SaveCorruptData(dir.clone(), err))?;
+        let data = serde_json::to_string_pretty(data).map_err(|err| Error::SerialisationError(dir.clone(), err))?;
 
-        fs::write(dir.clone(), data).map_err(|err| Error::SaveIOError(dir, err))?;
+        fs::write(dir.clone(), data).map_err(|err| Error::InvalidDirPath(dir, err))?;
         Ok(())
     }
 
