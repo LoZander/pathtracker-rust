@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used)]
+
 use pathtracker_rust::{
 	character::Chr, saver::NoSaver, tracker::{self, MovedStatus, Tracker}
 };
@@ -49,9 +51,9 @@ fn change_init_changes_init() -> tracker::Result<()> {
     let hugo = Chr::builder("Hugo", 10, true).build();
 
     let mut t: Tracker<NoSaver> = Tracker::builder().with_chrs(vec![
-        lucifer.clone(),
-        link.clone(),
-        hugo.clone(),
+        lucifer,
+        link,
+        hugo,
     ]).build();
 
     t.change_init("Hugo", 14)?;
@@ -68,16 +70,16 @@ fn change_init_preserves_sorting() -> tracker::Result<()> {
     let hugo = Chr::builder("Hugo", 10, true).build();
 
     let mut t: Tracker<NoSaver> = Tracker::builder().with_chrs(vec![
-        lucifer.clone(),
-        link.clone(),
-        hugo.clone(),
+        lucifer,
+        link,
+        hugo,
     ]).build();
 
     t.change_init("Lucifer", 19)?;
 
-    assert_eq!("Link", t.end_turn().unwrap().unwrap().name);
-    assert_eq!("Lucifer", t.end_turn().unwrap().unwrap().name);
-    assert_eq!("Hugo", t.end_turn().unwrap().unwrap().name);
+    assert_eq!("Link", t.end_turn()?.unwrap().name);
+    assert_eq!("Lucifer", t.end_turn()?.unwrap().name);
+    assert_eq!("Hugo", t.end_turn()?.unwrap().name);
 
     Ok(())
 }
@@ -90,11 +92,11 @@ fn change_init_not_in_turn_preserves_in_turn() -> tracker::Result<()> {
 
     let mut t: Tracker<NoSaver> = Tracker::builder().with_chrs(vec![
         lucifer.clone(),
-        link.clone(),
-        hugo.clone(),
+        link,
+        hugo,
     ]).build();
 
-    t.end_turn().unwrap();
+    t.end_turn()?;
     t.change_init("Link", 25)?;
 
     assert_eq!(Some(&lucifer), t.get_in_turn());
@@ -109,13 +111,13 @@ fn change_init_not_in_turn_so_skipped_preserves_in_turn() -> tracker::Result<()>
     let hugo = Chr::builder("Hugo", 10, true).build();
 
     let mut t: Tracker<NoSaver> = Tracker::builder().with_chrs(vec![
-        lucifer.clone(),
-        link.clone(),
-        hugo.clone(),
+        lucifer,
+        link,
+        hugo,
     ]).build();
 
-    t.end_turn().unwrap();
-    t.end_turn().unwrap();
+    t.end_turn()?;
+    t.end_turn()?;
 
     assert_eq!("Link", t.get_in_turn().unwrap().name);
     t.change_init("Hugo", 22)?;
@@ -131,13 +133,13 @@ fn change_init_not_in_turn_so_two_turns_preserves_in_turn() -> tracker::Result<(
     let hugo = Chr::builder("Hugo", 10, true).build();
 
     let mut t: Tracker<NoSaver> = Tracker::builder().with_chrs(vec![
-        lucifer.clone(),
-        link.clone(),
-        hugo.clone(),
+        lucifer,
+        link,
+        hugo,
     ]).build();
 
-    t.end_turn().unwrap();
-    t.end_turn().unwrap();
+    t.end_turn()?;
+    t.end_turn()?;
 
     assert_eq!("Link", t.get_in_turn().unwrap().name);
     t.change_init("Lucifer", 5)?;
@@ -153,13 +155,13 @@ fn change_init_not_in_turn_so_skipped_returns_skipped() -> tracker::Result<()> {
     let hugo = Chr::builder("Hugo", 10, true).build();
 
     let mut t: Tracker<NoSaver> = Tracker::builder().with_chrs(vec![
-        lucifer.clone(),
-        link.clone(),
-        hugo.clone(),
+        lucifer,
+        link,
+        hugo,
     ]).build();
 
-    t.end_turn().unwrap();
-    t.end_turn().unwrap();
+    t.end_turn()?;
+    t.end_turn()?;
 
     let skipped = t.change_init("Hugo", 22)?;
 
@@ -175,13 +177,13 @@ fn change_init_not_in_turn_so_two_turns_returns_two_turns() -> tracker::Result<(
     let hugo = Chr::builder("Hugo", 10, true).build();
 
     let mut t: Tracker<NoSaver> = Tracker::builder().with_chrs(vec![
-        lucifer.clone(),
-        link.clone(),
-        hugo.clone(),
+        lucifer,
+        link,
+        hugo,
     ]).build();
 
-    t.end_turn().unwrap();
-    t.end_turn().unwrap();
+    t.end_turn()?;
+    t.end_turn()?;
 
     let skipped = t.change_init("Lucifer", 7)?;
 
@@ -197,13 +199,13 @@ fn change_init_in_turn_wheearlier_order_changes_in_turn() -> tracker::Result<()>
     let hugo = Chr::builder("Hugo", 10, true).build();
 
     let mut t: Tracker<NoSaver> = Tracker::builder().with_chrs(vec![
-        lucifer.clone(),
-        link.clone(),
-        hugo.clone(),
+        lucifer,
+        link,
+        hugo,
     ]).build();
 
-    t.end_turn().unwrap();
-    t.end_turn().unwrap();
+    t.end_turn()?;
+    t.end_turn()?;
     
     assert_eq!("Link", t.get_in_turn().unwrap().name);
     t.change_init("Link", 30)?;
@@ -219,13 +221,13 @@ fn change_init_in_turn_when_earlier_order_changes_in_turn() -> tracker::Result<(
     let hugo = Chr::builder("Hugo", 10, true).build();
 
     let mut t: Tracker<NoSaver> = Tracker::builder().with_chrs(vec![
-        lucifer.clone(),
-        link.clone(),
-        hugo.clone(),
+        lucifer,
+        link,
+        hugo,
     ]).build();
 
-    t.end_turn().unwrap();
-    t.end_turn().unwrap();
+    t.end_turn()?;
+    t.end_turn()?;
 
     assert_eq!("Link", t.get_in_turn().unwrap().name);
     t.change_init("Link", 8)?;
@@ -238,11 +240,11 @@ fn change_init_in_turn_when_earlier_order_changes_in_turn() -> tracker::Result<(
 fn set_player_can_make_player() -> tracker::Result<()> {
     let barbosa = Chr::builder("Barbosa", 23, true).build();
 
-    let mut t: Tracker<NoSaver> = Tracker::builder().with_chrs(vec![barbosa.clone()]).build();
+    let mut t: Tracker<NoSaver> = Tracker::builder().with_chrs(vec![barbosa]).build();
 
-    assert!(t.get_chr("Barbosa").unwrap().player);
+    assert!(t.get_chr("Barbosa").is_some_and(|c| c.player));
     t.set_player("Barbosa", false)?;
-    assert!(!t.get_chr("Barbosa").unwrap().player);
+    assert!(!t.get_chr("Barbosa").is_some_and(|c| c.player));
 
     Ok(())
 }
@@ -251,11 +253,11 @@ fn set_player_can_make_player() -> tracker::Result<()> {
 fn set_player_can_make_enemy() -> tracker::Result<()> {
     let barbosa = Chr::builder("Barbosa", 23, false).build();
 
-    let mut t: Tracker<NoSaver> = Tracker::builder().with_chrs(vec![barbosa.clone()]).build();
+    let mut t: Tracker<NoSaver> = Tracker::builder().with_chrs(vec![barbosa]).build();
 
-    assert!(!t.get_chr("Barbosa").unwrap().player);
+    assert!(!t.get_chr("Barbosa").is_some_and(|c| c.player));
     t.set_player("Barbosa", true)?;
-    assert!(t.get_chr("Barbosa").unwrap().player);
+    assert!(t.get_chr("Barbosa").is_some_and(|c| c.player));
 
     Ok(())
 }

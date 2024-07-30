@@ -17,9 +17,7 @@ pub struct ConditionManager {
 impl ConditionManager {
     #[must_use]
     pub fn new() -> Self {
-        ConditionManager {
-            conds: HashSet::new(),
-        }
+        Self { conds: HashSet::new() }
     }
     pub fn add_condition(&mut self, character: &str, cond: Condition) {
         let exists_ge = self.get_conditions(character)

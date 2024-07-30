@@ -11,7 +11,7 @@ pub struct Health {
 
 impl Health {
     #[must_use]
-    pub fn new(max: u32) -> Self {
+    pub const fn new(max: u32) -> Self {
         Self { max, current: max, temp: 0 }
     }
 
@@ -77,6 +77,7 @@ pub struct ChrBuilder {
 }
 
 impl ChrBuilder {
+    #[must_use]
     pub fn new(name: impl Into<String>, init: i32, player: bool) -> Self {
         Self {
             name: name.into(),
@@ -97,9 +98,8 @@ impl ChrBuilder {
     }
     
     #[must_use]
-    pub fn with_health(mut self, health: Health) -> Self {
-        self.health = Some(health);
-        self
+    pub fn with_health(self, health: Health) -> Self {
+        Self { health: Some(health), ..self }
     }
 }
 

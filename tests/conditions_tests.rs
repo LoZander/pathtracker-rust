@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used)]
+
 use pathtracker_rust::{character::{Chr, Health}, conditions::{condition_manager::ConditionManager, Condition, DamageType, NonValuedCondition, NonValuedTerm, TurnEvent, ValuedCondition, ValuedTerm}, duration::Duration, saver::NoSaver, tracker::{self, Tracker}};
 
 #[test]
@@ -89,22 +91,24 @@ fn alice_manual_condition_remains_after_bob_turn_ends() {
 }
 
 #[test]
-fn alice_manual_condition_tracker_integration() {
+fn alice_manual_condition_tracker_integration() -> tracker::Result<()> {
     let mut t: Tracker<NoSaver> = Tracker::builder().build();
     let alice = Chr::builder("Alice", 32, true).build();
     let bob = Chr::builder("Bob", 23, true).build();
-    t.add_chr(alice).unwrap();
-    t.add_chr(bob).unwrap();
+    t.add_chr(alice)?;
+    t.add_chr(bob)?;
     let blinded = Condition::builder().condition(NonValuedCondition::Blinded).build();
-    t.add_condition("Alice", blinded.clone()).unwrap();
+    t.add_condition("Alice", blinded.clone())?;
 
     assert!(t.get_conditions("Alice").contains(&blinded));
-    t.end_turn().unwrap();
+    t.end_turn()?;
     assert!(t.get_conditions("Alice").contains(&blinded));
-    t.end_turn().unwrap();
+    t.end_turn()?;
     assert!(t.get_conditions("Alice").contains(&blinded));
-    t.end_turn().unwrap();
+    t.end_turn()?;
     assert!(t.get_conditions("Alice").contains(&blinded));
+
+    Ok(())
 }
 
 #[test]

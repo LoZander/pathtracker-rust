@@ -10,7 +10,7 @@ mod valued_conditions;
 
 
 #[derive(Error)]
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Error {
     #[error("invalid `{ty}` syntax: expected `{expected}` but got `{actual}`")]
     InvalidSyntax {
@@ -86,7 +86,7 @@ pub fn parse(args: &[&str]) -> Result<Command> {
                 _ => Err(Error::InvalidSyntax{
                     ty: "condition",
                     expected: "cond add <condition> [<value>] [<termination>] on <character>",
-                    actual: args.iter().intersperse(&" ").fold(String::from("add "), |acc,word| acc + word).to_string()
+                    actual: args.iter().intersperse(&" ").fold(String::from("add "), |acc,word| acc + word)
                 })
             }
         },
@@ -95,7 +95,7 @@ pub fn parse(args: &[&str]) -> Result<Command> {
                 Some([cond, _, "from", character @ ..] | [cond, "from", character @ ..]) => {
                     nonvalued_conditions::parse(cond)
                         .map(|cond| Condition::builder().condition(cond).build())
-                        .or(valued_conditions::parse(cond).map(|cond| Condition::builder().condition(cond).value(1).build()))
+                        .or_else(|_| valued_conditions::parse(cond).map(|cond| Condition::builder().condition(cond).value(1).build()))
                         .map(|cond| Command::RmCond { cond, character: unparse(character) })
                 },
                 Some(s) => Err(Error::InvalidSyntax { 
@@ -225,9 +225,9 @@ mod tests {
     use super::parse;
 
     #[test]
-    fn add_blinded_on_alice_parses_correctly() {
+    fn add_blinded_on_alice_parses_correctly() -> super::Result<()> {
         let input = ["add",nv_conds::BLINDED,"on","Alice"];
-        let command = parse(&input).unwrap();
+        let command = parse(&input)?;
         let expected = Command::AddCond {
             character: String::from("Alice"),
             cond: Condition::builder()
@@ -236,12 +236,14 @@ mod tests {
         };
 
         assert_eq!(expected, command);
+
+        Ok(())
     }
 
     #[test]
-    fn add_bleed_5_on_alice_parses_correctly() {
+    fn add_bleed_5_on_alice_parses_correctly() -> super::Result<()> {
         let input = ["add",v_conds::PERSISTENT_BLEED,"5","on","Bob"];
-        let command = parse(&input).unwrap();
+        let command = parse(&input)?;
         let expected = Command::AddCond {
             character: String::from("Bob"),
             cond: Condition::builder()
@@ -251,12 +253,14 @@ mod tests {
         };
 
         assert_eq!(expected, command);
+
+        Ok(())
     }
 
     #[test]
-    fn add_dazzled_until_end_of_bob_turn_on_alice_parses_correctly() {
+    fn add_dazzled_until_end_of_bob_turn_on_alice_parses_correctly() -> super::Result<()> {
         let input = ["add",nv_conds::DAZZLED,"until","end","of","Bob","turn","on","Alice"];
-        let command = parse(&input).unwrap();
+        let command = parse(&input)?;
         let expected = Command::AddCond {
             character: String::from("Alice"),
             cond: Condition::builder()
@@ -266,12 +270,14 @@ mod tests {
         };
 
         assert_eq!(expected, command);
+
+        Ok(())
     }
 
     #[test]
-    fn add_frightened_2_reduced_by_1_end_of_alice_turn_on_alice_parses_correctly() {
+    fn add_frightened_2_reduced_by_1_end_of_alice_turn_on_alice_parses_correctly() -> super::Result<()> {
         let input = ["add",v_conds::FRIGHTENED,"2","reduced","by","1","end","of","Alice","turn","on","Alice"];
-        let command = parse(&input).unwrap();
+        let command = parse(&input)?;
         let expected = Command::AddCond {
             character: String::from("Alice"),
             cond: Condition::builder()
@@ -282,12 +288,14 @@ mod tests {
         };
 
         assert_eq!(expected, command);
+
+        Ok(())
     }
 
     #[test]
-    fn add_drained_2_for_12_hours_on_alice() {
+    fn add_drained_2_for_12_hours_on_alice() -> super::Result<()> {
         let input = ["add",v_conds::DRAINED,"2","for","12","hours","on","Alice"];
-        let command = parse(&input).unwrap();
+        let command = parse(&input)?;
         let expected = Command::AddCond {
             character: String::from("Alice"),
             cond: Condition::builder()
@@ -298,12 +306,14 @@ mod tests {
         };
 
         assert_eq!(expected, command);
+
+        Ok(())
     }
 
     #[test]
-    fn add_blinded_for_8_hours_on_bob() {
+    fn add_blinded_for_8_hours_on_bob() -> super::Result<()> {
         let input = ["add",nv_conds::BLINDED,"for","8","hours","on","Bob"];
-        let command = parse(&input).unwrap();
+        let command = parse(&input)?;
         let expected = Command::AddCond {
             character: String::from("Bob"),
             cond: Condition::builder()
@@ -313,6 +323,8 @@ mod tests {
         };
 
         assert_eq!(expected, command);
+
+        Ok(())
     }
 
     #[test]

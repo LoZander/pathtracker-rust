@@ -26,13 +26,13 @@ pub enum Error {
 impl PartialEq for Error {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Error::AddDupError(x), Error::AddDupError(y)) |
-            (Error::RmNoneError(x), Error::RmNoneError(y)) |
-            (Error::ChangeNoneError(x), Error::ChangeNoneError(y)) => x == y,
-            (Error::RenameDupError { old: old1, new: new1 }, 
-                Error::RenameDupError { old: old2, new: new2 }) => 
+            (Self::AddDupError(x), Self::AddDupError(y)) |
+            (Self::RmNoneError(x), Self::RmNoneError(y)) |
+            (Self::ChangeNoneError(x), Self::ChangeNoneError(y)) => x == y,
+            (Self::RenameDupError { old: old1, new: new1 }, 
+                Self::RenameDupError { old: old2, new: new2 }) => 
                     old1 == old2 && new1 == new2,
-            (Error::LoadError(_), Error::LoadError(_)) => true,
+            (Self::LoadError(_), Self::LoadError(_)) => true,
             _ => false
         }
     }
@@ -40,7 +40,7 @@ impl PartialEq for Error {
 
 pub type Result<T> = std::result::Result<T, Error>;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Tracker<S: Saver> {
     chrs: Vec<Chr>,
     in_turn_index: Option<usize>,
@@ -58,7 +58,7 @@ struct TrackerData {
 
 impl<S: Saver> From<Tracker<S>> for TrackerData {
     fn from(value: Tracker<S>) -> Self {
-        TrackerData {
+        Self {
             chrs: value.chrs,
             in_turn_index: value.in_turn_index,
             cm: value.cm
@@ -68,7 +68,7 @@ impl<S: Saver> From<Tracker<S>> for TrackerData {
 
 impl<S: Saver> From<TrackerData> for Tracker<S> {
     fn from(value: TrackerData) -> Self {
-        Tracker {
+        Self {
             chrs: value.chrs,
             in_turn_index: value.in_turn_index,
             saver: S::default(),
@@ -83,13 +83,13 @@ impl<S: Saver> Default for Tracker<S> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MovedStatus {
     Skipped(Chr),
     TwoTurns(Chr),
 }
 
-#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Builder<S: Saver> {
     chrs: Vec<Chr>,
     in_turn_index: Option<usize>,
@@ -451,7 +451,7 @@ impl<S: Saver> Tracker<S> {
     /// This function will return an error if [`saver.load`] fails.
     pub fn load(saver: &S, file_name: impl Into<String>) -> Result<Self> {
         let data: TrackerData = saver.load(format!("saves/{}", file_name.into()))?;
-        let t: Tracker<S> = data.into();
+        let t: Self = data.into();
 
         Ok(t)
     }

@@ -51,32 +51,32 @@ impl Duration {
     }
 
     #[must_use]
-    pub fn in_seconds(self) -> Num {
+    pub const fn in_seconds(self) -> Num {
         self.seconds + 2 * self.in_actions()
     }
 
     #[must_use]
-    pub fn in_actions(self) -> Num {
+    pub const fn in_actions(self) -> Num {
         self.actions + 3 * self.in_turns()
     }
 
     #[must_use]
-    pub fn in_turns(self) -> Num {
+    pub const fn in_turns(self) -> Num {
         self.turns + 10 * self.in_minutes()
     }
 
     #[must_use]
-    pub fn in_minutes(self) -> Num {
+    pub const fn in_minutes(self) -> Num {
         self.minutes + 60 * self.in_hours()
     }
 
     #[must_use]
-    pub fn in_hours(self) -> Num {
+    pub const fn in_hours(self) -> Num {
         self.hours + 24 * self.in_days()
     }
 
     #[must_use]
-    pub fn in_days(self) -> Num {
+    pub const fn in_days(self) -> Num {
         self.days
     }
 
@@ -139,32 +139,32 @@ impl Builder {
     }
 
     #[must_use]
-    pub fn with_seconds(self, n: Num) -> Self {
+    pub const fn with_seconds(self, n: Num) -> Self {
         Self { seconds: Some(n), ..self }
     }
 
     #[must_use]
-    pub fn with_actions(self, n: Num) -> Self {
+    pub const fn with_actions(self, n: Num) -> Self {
         Self { actions: Some(n), ..self }
     }
     
     #[must_use]
-    pub fn with_turns(self, n: Num) -> Self {
+    pub const fn with_turns(self, n: Num) -> Self {
         Self { turns: Some(n), ..self }
     }
     
     #[must_use]
-    pub fn with_minutes(self, n: Num) -> Self {
+    pub const fn with_minutes(self, n: Num) -> Self {
         Self { minutes: Some(n), ..self }
     }
 
     #[must_use]
-    pub fn with_hours(self, n: Num) -> Self {
+    pub const fn with_hours(self, n: Num) -> Self {
         Self { hours: Some(n), ..self }
     }
 
     #[must_use]
-    pub fn with_days(self, n: Num) -> Self {
+    pub const fn with_days(self, n: Num) -> Self {
         Self { days: Some(n), ..self }
     }
 }
@@ -179,7 +179,7 @@ struct RawDuration {
 }
 
 impl RawDuration {
-    fn normalize(self) -> Duration {
+    const fn normalize(self) -> Duration {
         let normal = self
             .normalize_seconds()
             .normalize_actions()
@@ -197,31 +197,31 @@ impl RawDuration {
         }
     }
 
-    fn normalize_seconds(self) -> Self {
+    const fn normalize_seconds(self) -> Self {
         let seconds = self.seconds % 2;
         let actions = self.actions + self.seconds / 2;
         Self { seconds, actions, ..self }
     }
 
-    fn normalize_actions(self) -> Self {
+    const fn normalize_actions(self) -> Self {
         let actions = self.actions % 3;
         let turns = self.turns + self.actions / 3;
         Self { actions, turns, ..self }
     }
 
-    fn normalize_turns(self) -> Self {
+    const fn normalize_turns(self) -> Self {
         let turns = self.turns % 10;
         let minutes = self.minutes + self.turns / 10;
         Self { turns, minutes, ..self }
     }
 
-    fn normalize_minutes(self) -> Self {
+    const fn normalize_minutes(self) -> Self {
         let minutes = self.minutes % 60;
         let hours = self.hours + self.minutes / 60;
         Self { minutes, hours, ..self }
     }
 
-    fn normalize_hours(self) -> Self {
+    const fn normalize_hours(self) -> Self {
         let hours = self.hours % 24;
         let days = self.days + self.hours / 24;
         Self { hours, days, ..self }

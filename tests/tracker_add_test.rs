@@ -36,8 +36,8 @@ fn add_chr_before_in_turn_preserves_in_turn() -> tracker::Result<()> {
         Chr::builder("Skelly Boy", 3, false).build(),
     ]).build();
 
-    t.end_turn().unwrap();
-    t.end_turn().unwrap();
+    t.end_turn()?;
+    t.end_turn()?;
 
     assert_eq!(Some(&Chr::builder("Hellen", 27, true).build()), t.get_in_turn());
 
@@ -55,8 +55,8 @@ fn add_chr_after_in_turn_preserves_in_turn() -> tracker::Result<()> {
         Chr::builder("Skelly Boy", 3, false).build(),
     ]).build();
 
-    t.end_turn().unwrap();
-    t.end_turn().unwrap();
+    t.end_turn()?;
+    t.end_turn()?;
 
     assert_eq!(Some(&Chr::builder("Hellen", 27, true).build()), t.get_in_turn());
     t.add_chr(Chr::builder("Unlucky", 24, false).build())?;

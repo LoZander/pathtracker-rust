@@ -22,8 +22,8 @@ impl Condition {
 impl PartialEq for Condition {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Condition::Valued { cond: c1, .. }, Condition::Valued { cond: c2, .. }) => c1 == c2,
-            (Condition::NonValued { cond: c1, .. }, Condition::NonValued { cond: c2, .. }) => c1 == c2,
+            (Self::Valued { cond: c1, .. }, Self::Valued { cond: c2, .. }) => c1 == c2,
+            (Self::NonValued { cond: c1, .. }, Self::NonValued { cond: c2, .. }) => c1 == c2,
             _ => false
         }
     }
@@ -34,8 +34,8 @@ impl Eq for Condition {}
 impl Hash for Condition {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         match self {
-            Condition::Valued { cond, .. } => cond.hash(state),
-            Condition::NonValued { cond, .. } => cond.hash(state),
+            Self::Valued { cond, .. } => cond.hash(state),
+            Self::NonValued { cond, .. } => cond.hash(state),
         }
     }
 }
@@ -43,8 +43,8 @@ impl Hash for Condition {
 impl Display for Condition {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Condition::Valued { cond, term, level } => write!(f, "{cond} {level} {term}"),
-            Condition::NonValued { cond, term } => write!(f, "{cond} {term}"),
+            Self::Valued { cond, term, level } => write!(f, "{cond} {level} {term}"),
+            Self::NonValued { cond, term } => write!(f, "{cond} {term}"),
         }
     }
 }
@@ -59,8 +59,8 @@ pub enum TurnEvent {
 impl Display for TurnEvent {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            TurnEvent::StartOfTurn(name) => write!(f, "start of {name} turn"),
-            TurnEvent::EndOfTurn(name) => write!(f, "end of {name} turn"),
+            Self::StartOfTurn(name) => write!(f, "start of {name} turn"),
+            Self::EndOfTurn(name) => write!(f, "end of {name} turn"),
         }
     }
 }
@@ -79,9 +79,9 @@ pub enum NonValuedTerm {
 impl Display for NonValuedTerm {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            NonValuedTerm::Manual => write!(f, ""),
-            NonValuedTerm::For(dur) => write!(f, "for {} turns", dur.in_turns()),
-            NonValuedTerm::Until(event) => write!(f, "until {event}"),
+            Self::Manual => write!(f, ""),
+            Self::For(dur) => write!(f, "for {} turns", dur.in_turns()),
+            Self::Until(event) => write!(f, "until {event}"),
         }
     }
 }
@@ -100,10 +100,10 @@ pub enum ValuedTerm {
 impl Display for ValuedTerm {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ValuedTerm::Manual => write!(f, ""),
-            ValuedTerm::For(dur) => write!(f, "for {} turns", dur.in_turns()),
-            ValuedTerm::Until(event) => write!(f, "until {event}"),
-            ValuedTerm::Reduced(event, r) => write!(f, "reduced by {r} at {event}"),
+            Self::Manual => write!(f, ""),
+            Self::For(dur) => write!(f, "for {} turns", dur.in_turns()),
+            Self::Until(event) => write!(f, "until {event}"),
+            Self::Reduced(event, r) => write!(f, "reduced by {r} at {event}"),
         }
     }
 }
@@ -131,18 +131,18 @@ pub enum ValuedCondition {
 impl Display for ValuedCondition {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ValuedCondition::PersistentDamage(ty) => write!(f, "p. {ty}"),
-            ValuedCondition::Clumsy => write!(f, "clumsy"),
-            ValuedCondition::Doomed => write!(f, "doomed"),
-            ValuedCondition::Drained => write!(f, "drained"),
-            ValuedCondition::Dying => write!(f, "dying"),
-            ValuedCondition::Enfeebled => write!(f, "enfeebled"),
-            ValuedCondition::Frightened => write!(f, "frightened"),
-            ValuedCondition::Sickened => write!(f, "sickened"),
-            ValuedCondition::Slowed => write!(f, "slowed"),
-            ValuedCondition::Stunned => write!(f, "stunned"),
-            ValuedCondition::Stupified => write!(f, "stupified"),
-            ValuedCondition::Wounded => write!(f, "wounded"),
+            Self::PersistentDamage(ty) => write!(f, "p. {ty}"),
+            Self::Clumsy => write!(f, "clumsy"),
+            Self::Doomed => write!(f, "doomed"),
+            Self::Drained => write!(f, "drained"),
+            Self::Dying => write!(f, "dying"),
+            Self::Enfeebled => write!(f, "enfeebled"),
+            Self::Frightened => write!(f, "frightened"),
+            Self::Sickened => write!(f, "sickened"),
+            Self::Slowed => write!(f, "slowed"),
+            Self::Stunned => write!(f, "stunned"),
+            Self::Stupified => write!(f, "stupified"),
+            Self::Wounded => write!(f, "wounded"),
         }
     }
 }
@@ -186,36 +186,36 @@ pub enum NonValuedCondition {
 impl Display for NonValuedCondition {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            NonValuedCondition::Blinded => write!(f, "blinded"),
-            NonValuedCondition::Broken => write!(f, "broken"),
-            NonValuedCondition::Concealed => write!(f, "concealed"),
-            NonValuedCondition::Confused => write!(f, "confused"),
-            NonValuedCondition::Controlled => write!(f, "controlled"),
-            NonValuedCondition::Dazzled => write!(f, "dazzled"),
-            NonValuedCondition::Deafened => write!(f, "deafened"),
-            NonValuedCondition::Encumbered => write!(f, "encumbered"),
-            NonValuedCondition::Fascinated => write!(f, "fascinated"),
-            NonValuedCondition::Fatigued => write!(f, "fatigued"),
-            NonValuedCondition::FlatFooted => write!(f, "flat-footed"),
-            NonValuedCondition::Fleeing => write!(f, "fleeing"),
-            NonValuedCondition::Friendly => write!(f, "friendly"),
-            NonValuedCondition::Grabbed => write!(f, "grabbed"),
-            NonValuedCondition::Helpful => write!(f, "helpful"),
-            NonValuedCondition::Hidden => write!(f, "hidden"),
-            NonValuedCondition::Hostile => write!(f, "hostile"),
-            NonValuedCondition::Immobilized => write!(f, "immobilized"),
-            NonValuedCondition::Indifferent => write!(f, "indifferent"),
-            NonValuedCondition::Invisible => write!(f, "invisible"),
-            NonValuedCondition::Observed => write!(f, "observed"),
-            NonValuedCondition::Paralyzed => write!(f, "paralyzed"),
-            NonValuedCondition::Petrified => write!(f, "petrified"),
-            NonValuedCondition::Prone => write!(f, "prone"),
-            NonValuedCondition::Quickened => write!(f, "quickened"),
-            NonValuedCondition::Restrained => write!(f, "restrained"),
-            NonValuedCondition::Unconscious => write!(f, "unconscious"),
-            NonValuedCondition::Undetected => write!(f, "undetected"),
-            NonValuedCondition::Unfriendly => write!(f, "unfriendly"),
-            NonValuedCondition::Unnoticed => write!(f, "unnoticed"),
+            Self::Blinded => write!(f, "blinded"),
+            Self::Broken => write!(f, "broken"),
+            Self::Concealed => write!(f, "concealed"),
+            Self::Confused => write!(f, "confused"),
+            Self::Controlled => write!(f, "controlled"),
+            Self::Dazzled => write!(f, "dazzled"),
+            Self::Deafened => write!(f, "deafened"),
+            Self::Encumbered => write!(f, "encumbered"),
+            Self::Fascinated => write!(f, "fascinated"),
+            Self::Fatigued => write!(f, "fatigued"),
+            Self::FlatFooted => write!(f, "flat-footed"),
+            Self::Fleeing => write!(f, "fleeing"),
+            Self::Friendly => write!(f, "friendly"),
+            Self::Grabbed => write!(f, "grabbed"),
+            Self::Helpful => write!(f, "helpful"),
+            Self::Hidden => write!(f, "hidden"),
+            Self::Hostile => write!(f, "hostile"),
+            Self::Immobilized => write!(f, "immobilized"),
+            Self::Indifferent => write!(f, "indifferent"),
+            Self::Invisible => write!(f, "invisible"),
+            Self::Observed => write!(f, "observed"),
+            Self::Paralyzed => write!(f, "paralyzed"),
+            Self::Petrified => write!(f, "petrified"),
+            Self::Prone => write!(f, "prone"),
+            Self::Quickened => write!(f, "quickened"),
+            Self::Restrained => write!(f, "restrained"),
+            Self::Unconscious => write!(f, "unconscious"),
+            Self::Undetected => write!(f, "undetected"),
+            Self::Unfriendly => write!(f, "unfriendly"),
+            Self::Unnoticed => write!(f, "unnoticed"),
         }
     }
 }
@@ -247,22 +247,22 @@ pub enum DamageType {
 impl Display for DamageType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            DamageType::Bleed => write!(f, "bleed"),
-            DamageType::Poison => write!(f, "poison"),
-            DamageType::Piercing => write!(f, "piercing"),
-            DamageType::Bludgeoning => write!(f, "bludgeoning"),
-            DamageType::Slashing => write!(f, "slashing"),
-            DamageType::Acid => write!(f, "acid"),
-            DamageType::Cold => write!(f, "cold"),
-            DamageType::Electricity => write!(f, "electricity"),
-            DamageType::Sonic => write!(f, "sonic"),
-            DamageType::Positive => write!(f, "positive"),
-            DamageType::Negative => write!(f, "negative"),
-            DamageType::Force => write!(f, "force"),
-            DamageType::Chaotic => write!(f, "chaotic"),
-            DamageType::Evil => write!(f, "evil"),
-            DamageType::Good => write!(f, "good"),
-            DamageType::Lawful => write!(f, "lawful"),
+            Self::Bleed => write!(f, "bleed"),
+            Self::Poison => write!(f, "poison"),
+            Self::Piercing => write!(f, "piercing"),
+            Self::Bludgeoning => write!(f, "bludgeoning"),
+            Self::Slashing => write!(f, "slashing"),
+            Self::Acid => write!(f, "acid"),
+            Self::Cold => write!(f, "cold"),
+            Self::Electricity => write!(f, "electricity"),
+            Self::Sonic => write!(f, "sonic"),
+            Self::Positive => write!(f, "positive"),
+            Self::Negative => write!(f, "negative"),
+            Self::Force => write!(f, "force"),
+            Self::Chaotic => write!(f, "chaotic"),
+            Self::Evil => write!(f, "evil"),
+            Self::Good => write!(f, "good"),
+            Self::Lawful => write!(f, "lawful"),
         }
     }
 }
@@ -289,7 +289,7 @@ impl Default for ConditionBuilder<Empty,Empty,Empty> {
 
 impl ConditionBuilder<Empty,Empty,Empty> {
     #[must_use]
-    pub fn condition<Cond: CondType>(self, cond: Cond) -> ConditionBuilder<Cond,Empty,Empty> {
+    pub const fn condition<Cond: CondType>(self, cond: Cond) -> ConditionBuilder<Cond,Empty,Empty> {
         ConditionBuilder {
             cond,
             value: Empty,
