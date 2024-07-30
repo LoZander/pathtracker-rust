@@ -16,8 +16,8 @@ pub struct Duration {
 
 impl Duration {
     #[must_use]
-    pub fn builder() -> DurationBuilder {
-        DurationBuilder::default()
+    pub fn builder() -> Builder {
+        Builder::default()
     }
 
     #[must_use]
@@ -114,7 +114,7 @@ impl std::ops::Sub for Duration {
 #[derive(Debug, Clone, Copy, Default)]
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 #[derive(Serialize, Deserialize)]
-pub struct DurationBuilder {
+pub struct Builder {
     seconds: Option<Num>,
     actions: Option<Num>,
     turns: Option<Num>,
@@ -123,7 +123,7 @@ pub struct DurationBuilder {
     days: Option<Num>
 }
 
-impl DurationBuilder {
+impl Builder {
     #[must_use]
     pub fn build(self) -> Duration {
         let seconds  = self.seconds.unwrap_or(0);

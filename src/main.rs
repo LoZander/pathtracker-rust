@@ -12,5 +12,6 @@ fn main() {
         Err(tracker::Error::LoadError(saver::Error::LoadIOError(_, _))) => Tracker::default(),
         Err(e) => panic!("{e:?}")
     };
-    terminalgui::run(t).unwrap();
+
+    terminalgui::run(t).expect("Tracker Error");
 }

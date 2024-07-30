@@ -79,7 +79,7 @@ impl<S: Saver> From<TrackerData> for Tracker<S> {
 
 impl<S: Saver> Default for Tracker<S> {
     fn default() -> Self {
-        TrackerBuilder::default().build()
+        Builder::default().build()
     }
 }
 
@@ -90,14 +90,14 @@ pub enum MovedStatus {
 }
 
 #[derive(Debug, Clone, PartialEq, Default)]
-pub struct TrackerBuilder<S: Saver> {
+pub struct Builder<S: Saver> {
     chrs: Vec<Chr>,
     in_turn_index: Option<usize>,
     saver: S,
     cm: ConditionManager
 }
 
-impl<S: Saver> TrackerBuilder<S> {
+impl<S: Saver> Builder<S> {
     /// Creates a new [`TrackerBuilder<S>`].
     #[must_use]
     pub fn new(saver: S) -> Self {
@@ -137,8 +137,8 @@ impl<S: Saver> Tracker<S> {
     /// Creates a [`TrackerBuilder<S>`] for the purpose of the initialisation 
     /// of a [`Tracker<S>`].
     #[must_use]
-    pub fn builder() -> TrackerBuilder<S> {
-        TrackerBuilder::new(S::default())
+    pub fn builder() -> Builder<S> {
+        Builder::new(S::default())
     }
 
     /// Returns a reference to the character [`Chr`] with the given [`name`],
