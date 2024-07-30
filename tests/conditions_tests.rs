@@ -194,3 +194,30 @@ fn persistent_damage_reduces_health_at_end_of_turn() -> tracker::Result<()> {
 
     Ok(())
 }
+
+#[test]
+fn persistent_bleed_10_reduced_start_alice_on_bob() -> tracker::Result<()> {
+    let mut t: Tracker<NoSaver> = Tracker::default();
+    let alice = Chr::builder("Alice", 10, false).build();
+    let bob = Chr::builder("Bob", 13, false).with_health(Health::new(40)).build();
+    t.add_chr(alice)?;
+    t.add_chr(bob)?;
+    let bleed = Condition::builder()
+        .condition(ValuedCondition::PersistentDamage(DamageType::Bleed))
+        .value(10)
+        .term(ValuedTerm::Reduced(TurnEvent::StartOfTurn(String::from("Alice")), 3))
+        .build();
+    t.add_condition("Bob", bleed)?;
+
+    t.end_turn()?;
+    t.end_turn()?;
+
+    assert_eq!(30, t.get_chr("Bob").unwrap().health.as_ref().unwrap().current);
+
+    t.end_turn()?;
+    t.end_turn()?;
+
+    assert_eq!(23, t.get_chr("Bob").unwrap().health.as_ref().unwrap().current);
+
+    Ok(())
+}

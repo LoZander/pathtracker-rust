@@ -1,4 +1,4 @@
-use std::{cmp::Ordering, ops::RemAssign};
+use std::cmp::Ordering;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -20,7 +20,7 @@ impl Health {
     }
 
     fn damage(&mut self, x: u32) {
-        self.current = self.max.saturating_sub(x);
+        self.current = self.current.saturating_sub(x);
     } 
 }
 
