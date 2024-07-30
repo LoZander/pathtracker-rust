@@ -11,6 +11,10 @@ serde_json = "1.0.114"
 thiserror = "1.0.57"
 
 [lints.clippy]
+unwrap_used = "warn"
+unwrap_in_result = "warn"
+option_filter_map = "warn"
+# nursery = "warn"
 pedantic = "warn"
 style = "warn"
 complexity = "warn"

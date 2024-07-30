@@ -409,7 +409,7 @@ impl<S: Saver> Tracker<S> {
 
         self.unchecked_change(name, f)?;
 
-        let after = self.pos(name).unwrap();
+        let after = self.pos(name).ok_or(Error::ChangeNoneError(name.into()))?;
 
         if let Some(in_turn) = in_turn {
             if before == in_turn && after < in_turn {

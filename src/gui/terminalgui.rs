@@ -36,6 +36,14 @@ pub enum Error {
 
 pub struct TerminalGui;
 
+/// Runs the Tracker using the terminal GUI.
+///
+/// # Errors
+///
+/// This function will return an error if
+/// - Reading terminal input fails
+/// - Parsing terminal input fails
+/// - [`Tracker<S>`] fails when executing a command.
 pub fn run<S: Saver>(mut t: Tracker<S>) -> Result<(), Error> {
     let mut buff = String::new();
     let stdin = io::stdin();

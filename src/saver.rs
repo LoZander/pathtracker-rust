@@ -21,10 +21,26 @@ pub enum Error {
 pub type Result<T> = std::result::Result<T,Error>;
 
 pub trait Saver : Default + Clone + Sized {
+    /// Saves [`data`] to save directory [`dir`].
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if
+    /// - Serialisation of [`data`] fails
+    /// - [`dir`] is an invalid directory.
     fn save<D: Serialize + DeserializeOwned>(&self, data: &D, dir: impl Into<String>) -> Result<()>;
+
+    /// Loads data of type [`D`] from directory [`dir`].
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if
+    /// - Loading raw data from the file fails
+    /// - Deserialisation of data into type [`D`] fails.
     fn load<D: Serialize + DeserializeOwned>(&self, dir: impl Into<String>) -> Result<D>;
 }
 
+#[allow(clippy::module_name_repetitions)]
 #[derive(Debug, Clone, Copy, Default)]
 pub struct NoSaver;
 impl Saver for NoSaver {
@@ -37,6 +53,7 @@ impl Saver for NoSaver {
     }
 }
 
+#[allow(clippy::module_name_repetitions)]
 #[derive(Debug, Clone, Copy, Default)]
 pub struct FileSaver;
 impl Saver for FileSaver {
