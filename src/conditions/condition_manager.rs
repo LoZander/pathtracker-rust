@@ -101,12 +101,18 @@ impl ConditionManager {
                     (_, Condition::Valued { term: ValuedTerm::Until(e), .. } |
                         Condition::NonValued { term: NonValuedTerm::Until(e), .. }) if &e == event => None,
                     (affected, Condition::Valued { term: ValuedTerm::Reduced(e, reduction), level, cond }) if &e == event => {
-                        let new_cond = Condition::Valued { 
-                            cond, 
-                            term: ValuedTerm::Reduced(e, reduction), 
-                            level: level.saturating_sub(reduction) 
-                        };
-                        Some((affected, new_cond))
+                        let new_level = level.saturating_sub(reduction);
+                        match new_level {
+                            0 => None,
+                            level => {
+                                let new_cond = Condition::Valued { 
+                                    cond, 
+                                    term: ValuedTerm::Reduced(e, reduction), 
+                                    level 
+                                };
+                                Some((affected, new_cond))
+                            }
+                        }
                     },
                     (affected, cond) => Some((affected, cond))
                 }
