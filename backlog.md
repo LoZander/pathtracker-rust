@@ -1,4 +1,6 @@
 # Backlog
+- [ ] FIX: condition that ends at Bob's end of turn, if added during bob's turn
+      will end at that turn, not the next (as expected)
 - [x] persistent damage tracking (what about weakness and resistence)
 - [x] remove dex, doesn't rule ties
 - [ ] enemies go first in ties
