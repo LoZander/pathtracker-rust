@@ -16,11 +16,11 @@ impl Health {
     }
 
     fn heal(&mut self, x: u32) {
-        self.current = self.max.min(self.current - x);
+        self.current = self.max.min(self.current + x);
     }
 
     fn damage(&mut self, x: u32) {
-        self.current = self.max.min(self.current - x);
+        self.current = self.current.saturating_sub(x);
     } 
 }
 
@@ -42,8 +42,11 @@ impl PartialOrd for Chr {
 impl Ord for Chr {
     fn cmp(&self, other: &Self) -> Ordering {
         if self.init != other.init { return other.init.cmp(&self.init) }
-
-        Ordering::Equal
+        match (self.player, other.player) {
+            (true, false) => Ordering::Greater,
+            (false, true) => Ordering::Less,
+            _ => Ordering::Equal
+        }
     }
 }
 
@@ -122,5 +125,21 @@ mod tests {
         let c2 = Chr::builder("b", 20, true).build();
 
         assert_eq!(Ordering::Greater, c1.cmp(&c2));
+    }
+
+    #[test]
+    fn chr_order_same_init_enemy_less_than_player() {
+        let c1 = Chr::builder("a", 10, false).build();
+        let c2 = Chr::builder("b", 10, true).build();
+
+        assert_eq!(Ordering::Less, c1.cmp(&c2));
+    }
+
+    #[test]
+    fn chr_order_same_init_enemy_equal_enemy() {
+        let c1 = Chr::builder("a", 10, false).build();
+        let c2 = Chr::builder("b", 10, false).build();
+
+        assert_eq!(Ordering::Equal, c1.cmp(&c2));
     }
 }

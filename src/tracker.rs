@@ -170,6 +170,7 @@ impl<S: Saver> Tracker<S> {
             if let Some(damage) = damage {
                 // It can only fail if there is no character by the name,
                 // which there naturally will always be in this if body
+                println!("P. DAMAGE {damage} on {chr:?}");
                 self.damage(&chr.name, damage.into())?;
             }
         }

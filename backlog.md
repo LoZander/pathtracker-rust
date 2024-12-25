@@ -1,7 +1,10 @@
 # Backlog
+- [ ] FIX: condition that ends at Bob's end of turn, if added during bob's turn
+      will end at that turn, not the next (as expected)
 - [x] persistent damage tracking (what about weakness and resistence)
 - [x] remove dex, doesn't rule ties
-- [ ] enemies go first in ties
+- [x] enemies go first in ties
+- [ ] undo/redo
 - [ ] allow ties to be reordered per GM discression (fx command `order <names>`)
 - [ ] allow delaying characters (choosing later init slot)
 - [ ] edit info

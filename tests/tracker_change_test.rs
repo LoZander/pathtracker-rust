@@ -33,13 +33,13 @@ fn rename_preserves_order() -> tracker::Result<()> {
     let mut t: Tracker<NoSaver> = Tracker::builder().with_chrs(vec![
         Chr::builder("Lucifer", 24, true).build(),
         Chr::builder("Link", 24, true).build(),
-        Chr::builder("Lament", 24, false).build(),
+        Chr::builder("Lament", 24, true).build(),
     ]).build();
 
     t.rename("Link", "Ganon")?;
     assert_eq!(Ok(Some(&Chr::builder("Lucifer", 24, true).build())), t.end_turn());
     assert_eq!(Ok(Some(&Chr::builder("Ganon", 24, true).build())), t.end_turn());
-    assert_eq!(Ok(Some(&Chr::builder("Lament", 24, false).build())), t.end_turn());
+    assert_eq!(Ok(Some(&Chr::builder("Lament", 24, true).build())), t.end_turn());
 
     Ok(())
 }
