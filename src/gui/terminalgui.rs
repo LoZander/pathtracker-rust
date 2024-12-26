@@ -106,6 +106,8 @@ enum Command {
         health: Option<u32>
     },
     RmCond { character: String, cond: Condition },
+    Help,
+    HelpWith(Help),
 }
 
 fn execute_command<S: Saver>(t: &mut Tracker<S>, cmd: Command) -> tracker::Result<()> {
@@ -141,6 +143,88 @@ fn execute_command<S: Saver>(t: &mut Tracker<S>, cmd: Command) -> tracker::Resul
 
             Ok(())
         },
+        Command::Help => {
+            help();
+            Ok(())
+        }
+        Command::HelpWith(cmd) => {
+            help_with(cmd);
+            Ok(())
+        }
     }
 }
 
+const HELP_HEADER: &str = "Instructions";
+const ITEM: &str = " - ";
+const INDENT: &str = "   ";
+const HELP_HELP: &str = concatcp!(
+    ITEM, 
+    parser::command_strs::HELP, 
+    " [<command>]: explains a given command. If none is given, gives this overview."
+);
+const HELP_END_TURN: &str = concatcp!(
+    ITEM, 
+    parser::command_strs::END_TURN, 
+    ": ends the current turn"
+);
+const HELP_ADD: &str = concatcp!(
+    ITEM, 
+    parser::command_strs::ADD, 
+    ": adds a character.",
+);
+const HELP_REMOVE: &str = concatcp!(
+    ITEM,
+    parser::command_strs::REMOVE,
+    " <character>: removes a character from the tracker"
+);
+const HELP_MODIFY: &str = concatcp!(
+    ITEM,
+    parser::command_strs::MODIFY,
+    " <character> [options]: modifies one or more properties of a character.",
+);
+const HELP_CONDITION: &str = concatcp!(
+    ITEM,
+    parser::command_strs::CONDITION,
+    " <condition command>: do `help cond` for details.",
+);
+
+const HELP: &str = concatcp!(
+    HELP_HEADER, "\n", 
+    HELP_HELP, "\n",
+    HELP_END_TURN, "\n",
+    HELP_ADD, "\n",
+    HELP_REMOVE, "\n",
+    HELP_MODIFY, "\n",
+    HELP_CONDITION
+);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Help {
+    Help,
+    EndTurn,
+    Add,
+    Remove,
+    Modify,
+    Condition,
+}
+
+fn help() {
+    println!("{CLEAR}");
+    println!("{HELP}");
+
+    let mut buff = String::new();
+    let stdin = io::stdin();
+
+    let _ = stdin.read_line(&mut buff);
+}
+
+fn help_with(cmd: Help) {
+    match cmd {
+        Help::Help => todo!(),
+        Help::EndTurn => todo!(),
+        Help::Add => todo!(),
+        Help::Remove => todo!(),
+        Help::Modify => todo!(),
+        Help::Condition => todo!(),
+    }
+}

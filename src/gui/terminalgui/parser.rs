@@ -1,7 +1,7 @@
 use anymap2::AnyMap;
 use thiserror::Error;
 
-use super::Command;
+use super::{Command, Help};
 
 mod condition_parser;
 use condition_parser as cond_parser;
@@ -33,10 +33,23 @@ pub enum Error {
     InvalidExtraArg(#[from] ExtraArgError),
 
     #[error(transparent)]
-    CondParser(#[from] cond_parser::Error)
+    CondParser(#[from] cond_parser::Error),
+
+    #[error("invalid arg `{0}` for help command.")]
+    InvalidHelpArg(String)
 }
 
 pub type ParseResult = Result<Command, Error>;
+
+pub mod command_strs {
+    pub const END_TURN: &str = "n";
+    pub const ADD: &str = "add";
+    pub const REMOVE: &str = "rm";
+    pub const MODIFY: &str = "mod";
+    pub const CONDITION: &str = "cond";
+    pub const HELP: &str = "help";
+}
+
 
 pub fn parse_input(input: &str) -> ParseResult {
     let sentences: Vec<&str> = input.split('-').map(str::trim).collect();
@@ -47,8 +60,8 @@ pub fn parse_input(input: &str) -> ParseResult {
     let keyword = *words.first().ok_or(Error::EmptyInput)?;
     let args = &words[1..];
     match keyword {
-        "n" => Ok(Command::EndTurn),
-        "add" => match args {
+        command_strs::END_TURN => Ok(Command::EndTurn),
+        command_strs::ADD => match args {
             [init, name @ ..] => {
                 let init: i32 = init.parse().map_err(|err| Error::ParseInt { arg: (*init).to_string(), source: err })?;
                 let name = unparse(name);
@@ -67,10 +80,10 @@ pub fn parse_input(input: &str) -> ParseResult {
                 })
             },
             _ => Err(Error::InvalidNumberOfArgs(args.len(), "add".into())) },
-        "rm" => {
+        command_strs::REMOVE => {
             let name = args.iter().intersperse(&" ").fold(String::new(), |x, y| x + y);
             Ok(Command::RmChr { name }) }
-        "mod" => {
+        command_strs::MODIFY => {
             let name = args.iter().intersperse(&" ").fold(String::new(), |x, y| x + y);
 
             let mut map = AnyMap::new();
@@ -88,9 +101,19 @@ pub fn parse_input(input: &str) -> ParseResult {
                 health: map.get::<HealthArg>().map(|x| x.0),
             })
         }
-        "cond" => {
+        command_strs::CONDITION => {
             let command = cond_parser::parse(args)?;
             Ok(command)
+        },
+        command_strs::HELP => match args {
+            [command_strs::HELP, ..] => Ok(Command::HelpWith(Help::Help)),
+            [command_strs::END_TURN, ..] => Ok(Command::HelpWith(Help::EndTurn)),
+            [command_strs::ADD, ..] => Ok(Command::HelpWith(Help::Add)),
+            [command_strs::REMOVE, ..] => Ok(Command::HelpWith(Help::Remove)),
+            [command_strs::MODIFY, ..] => Ok(Command::HelpWith(Help::Modify)),
+            [command_strs::CONDITION, ..] => Ok(Command::HelpWith(Help::Condition)),
+            [] => Ok(Command::Help),
+            other => Err(Error::InvalidHelpArg(unparse(other))),
         },
 
         word => Err(Error::InvalidKeyWord(word.to_string()))
