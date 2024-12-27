@@ -218,13 +218,61 @@ fn help() {
     let _ = stdin.read_line(&mut buff);
 }
 
+fn pause() {
+    let mut buff = String::new();
+    let stdin = io::stdin();
+
+    let _ = stdin.read_line(&mut buff);
+}
+
+
+const HELP_WITH_HELP: &str = concatcp!(
+    parser::command_strs::HELP, " [<command>]:\n\
+    \n\
+    Gives helpful information on commands. If no argument is given, a general\n\
+    command guide and summary list of commands is printed. `help` can also\n\
+    give a more detailed description of a command by providing the command as\n\
+    an argument.\n\
+    \n\
+    Example: ", parser::command_strs::HELP, " add"
+);
+
+const HELP_WITH_END_TURN: &str = concatcp!(
+    parser::command_strs::END_TURN, ":\n\
+    \n\
+    Ends the current turn.
+    "
+);
+
+const HELP_WITH_ADD: &str = concatcp!(
+    parser::command_strs::ADD, " <init> <name> [<options>]:\n\
+    \n\
+    Adds a new character to the tracker.\n\
+    \n\
+    Optional features like tracking health can be added by including the\n\
+    corresponding option. The options are:\n\
+     - health/h <max health>: adds health tracking\n\
+     - player/p: marks the character as a player character\n\
+     - enemy/e: marks the character as an enemy character\n\
+    \n\
+    Example: add 24 Sarah -player -health 20
+    "
+);
+
 fn help_with(cmd: Help) {
+    println!("{CLEAR}");
     match cmd {
-        Help::Help => todo!(),
-        Help::EndTurn => todo!(),
-        Help::Add => todo!(),
+        Help::Help => println!("{HELP_WITH_HELP}"),
+        Help::EndTurn => println!("{HELP_WITH_END_TURN}"),
+        Help::Add => println!("{HELP_WITH_ADD}"),
         Help::Remove => todo!(),
         Help::Modify => todo!(),
         Help::Condition => todo!(),
-    }
+    };
+
+    println!();
+
+    println!("... press Enter to return");
+
+    pause();
 }
