@@ -100,6 +100,33 @@ const HELP_WITH_ADD: &str = concatcp!(
     "
 );
 
+const HELP_WITH_REMOVE: &str = concatcp!(
+    command_strs::REMOVE, " <name>:\n\
+    \n\
+    Removes a character from the tracker.\n\
+    \n\
+    If it's the to-be-removed characters turn then upon removal their turn\n\
+    ends as if the ", command_strs::END_TURN, " command had been invoked.\n\
+    \n\
+    Example: ", command_strs::REMOVE, " Carlile"
+);
+
+const HELP_WITH_MODIFY: &str = concatcp!(
+    command_strs::MODIFY, " <name> [<options>]:\n\
+    \n\
+    Modifies an attribute of a character.\n\
+    \n\
+    The attributes to be modified are specified by giving one or more options.\n\
+    The options are:\n\
+     - name/n <new name>: changes the name of the character\n\
+     - init/i <new init>: changes the initiative of the character\n\
+     - health/h <max health>: adds health tracking to character and/or changes max health.\n\
+     - player/p: marks the character as a player character\n\
+     - enemy/e: marks the character as an enemy character\n\
+    \n\
+    Example: ", command_strs::MODIFY, " Sarah -h 23 -p"
+);
+
 impl Topic {
     pub fn help(self) {
         println!("{CLEAR}");
@@ -108,8 +135,8 @@ impl Topic {
             Self::Help => println!("{HELP_WITH_HELP}"),
             Self::EndTurn => println!("{HELP_WITH_END_TURN}"),
             Self::Add => println!("{HELP_WITH_ADD}"),
-            Self::Remove => todo!(),
-            Self::Modify => todo!(),
+            Self::Remove => println!("{HELP_WITH_REMOVE}"),
+            Self::Modify => println!("{HELP_WITH_MODIFY}"),
             Self::Condition => todo!(),
         };
 
