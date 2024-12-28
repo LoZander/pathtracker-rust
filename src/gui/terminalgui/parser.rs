@@ -1,7 +1,7 @@
 use anymap2::AnyMap;
 use thiserror::Error;
 
-use super::{Command, Help};
+use super::{Command, Topic};
 
 mod condition_parser;
 use condition_parser as cond_parser;
@@ -106,13 +106,13 @@ pub fn parse_input(input: &str) -> ParseResult {
             Ok(command)
         },
         command_strs::HELP => match args {
-            [command_strs::HELP, ..] => Ok(Command::HelpWith(Help::Help)),
-            [command_strs::END_TURN, ..] => Ok(Command::HelpWith(Help::EndTurn)),
-            [command_strs::ADD, ..] => Ok(Command::HelpWith(Help::Add)),
-            [command_strs::REMOVE, ..] => Ok(Command::HelpWith(Help::Remove)),
-            [command_strs::MODIFY, ..] => Ok(Command::HelpWith(Help::Modify)),
-            [command_strs::CONDITION, ..] => Ok(Command::HelpWith(Help::Condition)),
-            [] => Ok(Command::Help),
+            [command_strs::HELP, ..] => Ok(Command::Help(Topic::Help)),
+            [command_strs::END_TURN, ..] => Ok(Command::Help(Topic::EndTurn)),
+            [command_strs::ADD, ..] => Ok(Command::Help(Topic::Add)),
+            [command_strs::REMOVE, ..] => Ok(Command::Help(Topic::Remove)),
+            [command_strs::MODIFY, ..] => Ok(Command::Help(Topic::Modify)),
+            [command_strs::CONDITION, ..] => Ok(Command::Help(Topic::Condition)),
+            [] => Ok(Command::Help(Topic::Summary)),
             other => Err(Error::InvalidHelpArg(unparse(other))),
         },
 
