@@ -127,6 +127,60 @@ const HELP_WITH_MODIFY: &str = concatcp!(
     Example: ", command_strs::MODIFY, " Sarah -h 23 -p"
 );
 
+const HELP_WITH_CONDITION: &str = concatcp!(
+    command_strs::CONDITION, " <cond command>:\n\
+    \n\
+    Allows adding and removing conditions via the following condition commands:\n\
+     - add <condition> [<condition level>] [<term criteria>] on <character>: adds the given condition to the given character.\n\
+     - rm <condition> from <character>: removes the given condition from the given character.\n\
+    \n\
+    Example: ", command_strs::CONDITION, " add clumsy 2 until end of turn on Clara\n\
+    \n\
+    Conditions (<condition>):\n\
+    \n\
+    The tracker supports all of the standard conditions and most have the obvious name.\n\
+    For persistent damage we have the special notation 'persistent:<damage type>',\n\
+    where the damage are those from the legacy version of PF2E (not remastered).\n\
+    \n\
+    Termination criteria (<term criteria>):\n\
+    \n\
+    Specifying a termination criteria allows the tracker to automatically remove or decrement the condition\n\
+    on a given trigger. If no termination criteria is given, the condition must be manually managed.\n\
+    The tracker supports the following termination criteria:\n\
+     - until <trigger>\n\
+     - for <time>\n\
+     - reduced <trigger>\n\
+    \n\
+    Triggers (<trigger>) we have:\n\
+     - end of [<character>] turn\n\
+     - start of [<character>] turn\n\
+    \n\
+    where not supplying a character name makes the trigger relative to the\n\
+    character whose condition it is. For instance, if we add 'slowed 2' to\n\
+    'Clara' with the trigger 'until start of turn' then 'Clara' is slowed 2 until\n\
+    the start of her turn. If we instead wrote 'until start of Mathias turn' then\n\
+    Clara will be slowed 2 until the start of Mathias turn.\n\
+    \n\
+    Time (<time>):\n\
+    \n\
+    For time based termination criteria, we can specify time in actions, turns,\n\
+    seconds, minutes and even days. Note however, that the tracker doesn't track time\n\
+    on a finer granularity than turns, so something that lasts for 2 actions, for instance\n\
+    will terminate after a turn. Be aware that we track the time of a condition relative\n\
+    to the end of the turn of the character who has the condition.\n\
+    For instance, if Clara is blinded for 2 turns then this condition ends one\n\
+    Clara's turn has ended twice.\n\
+    \n\
+    \n\
+    Known issues:\n\
+    \n\
+    A known issue is that if a character gets a condition on their turn that should\n\
+    last until the end of their next turn, then using the trigger 'until end of turn'\n\
+    maybe somewhat unintuitively will make the condition last until the end of\n\
+    the current turn, not the next one. For now this issue can be sidestepped\n\
+    by instead using the trigger 'for 1 turn' in this situation."
+);
+
 impl Topic {
     pub fn help(self) {
         println!("{CLEAR}");
@@ -137,7 +191,7 @@ impl Topic {
             Self::Add => println!("{HELP_WITH_ADD}"),
             Self::Remove => println!("{HELP_WITH_REMOVE}"),
             Self::Modify => println!("{HELP_WITH_MODIFY}"),
-            Self::Condition => todo!(),
+            Self::Condition => println!("{HELP_WITH_CONDITION}"),
         };
 
         println!();
