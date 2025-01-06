@@ -1,9 +1,11 @@
 use std::io;
 use const_format::concatcp;
+use help::Topic;
 use thiserror::Error;
 use crate::{character::{Chr, Health}, conditions::Condition, saver::Saver, tracker::{self, Tracker}};
 
 mod parser;
+mod help;
 
 const CLEAR: &str  = "\x1B[2J\n";
 const SPACER: &str = "  ";
@@ -106,6 +108,7 @@ enum Command {
         health: Option<u32>
     },
     RmCond { character: String, cond: Condition },
+    Help(Topic),
 }
 
 fn execute_command<S: Saver>(t: &mut Tracker<S>, cmd: Command) -> tracker::Result<()> {
@@ -141,6 +144,10 @@ fn execute_command<S: Saver>(t: &mut Tracker<S>, cmd: Command) -> tracker::Resul
 
             Ok(())
         },
+        Command::Help(topic) => {
+            topic.help();
+            Ok(())
+        }
     }
 }
 
