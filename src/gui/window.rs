@@ -139,29 +139,25 @@ impl<S: Saver> WindowApp<S> {
 
     fn init_character(&mut self, ctx: &Context, ui: &mut Ui, character: &Chr) {
         ui.style_mut().spacing.indent = 20.0;
-        if self.tracker.get_in_turn() == Some(character) {
-            ui.horizontal(|ui| {
+        let space = if self.tracker.get_in_turn() == Some(character) {
+            0.0
+        } else {
+            20.0
+        };
+        egui::containers::Sides::new().show(ui,
+            |ui| {
+                ui.add_space(space);
                 ui.heading(character.init.to_string());
                 ui.label(character.name.clone());
+            },
+            |ui| {
                 if ui.small_button("x").clicked() {
                     if let Err(err) = self.tracker.rm_chr(&character.name) {
                         error_window(ctx, "Save error", err.to_string());
                     };
                 }
-            });
-        } else {
-            ui.indent(0, |ui| {
-                ui.horizontal(|ui| {
-                    ui.heading(character.init.to_string());
-                    ui.label(character.name.clone());
-                    if ui.small_button("x").clicked() {
-                        if let Err(err) = self.tracker.rm_chr(&character.name) {
-                            error_window(ctx, "Save error", err.to_string());
-                        }
-                    }
-                });
-            });
-        }
+            }
+        );
     }
 }
 
