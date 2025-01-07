@@ -1,4 +1,4 @@
-use egui::{vec2, Context, InnerResponse, Window};
+use egui::{vec2, Context, RichText, Window};
 
 use crate::{character::Chr, saver::Saver, tracker::Tracker};
 
@@ -30,56 +30,64 @@ struct AddWindow {
     player: bool
 }
 
+impl Default for AddWindow {
+    fn default() -> Self {
+        Self {
+            show: false,
+            focus: false,
+            name: String::new(),
+            init: 0,
+            player: false
+        }
+    }
+}
+
 impl AddWindow {
-    pub fn reset(&mut self) {
+    fn reset(&mut self) {
         self.name = String::new();
         self.init = 0;
         self.player = false;
     }
 
-    pub fn open(&mut self) {
+    fn open(&mut self) {
         self.show = true;
         self.focus = true;
     }
 
-    pub fn close(&mut self) {
+    fn close(&mut self) {
         self.show = false;
         self.focus = false;
         self.reset();
     }
-
-    pub fn init<S: Saver>(&mut self, ctx: &Context, tracker: &mut Tracker<S>) {
-    }
 }
 
 impl<S: Saver> WindowApp<S> {
-    pub const fn new(tracker: Tracker<S>) -> Self {
+    pub fn new(tracker: Tracker<S>) -> Self {
         Self {
             tracker,
-            add_window: AddWindow {
-                show: false,
-                focus: false,
-                name: String::new(),
-                init: 0,
-                player: false
-            }
+            add_window: AddWindow::default()
         }
     }
 }
 
+
+fn error_window(ctx: &Context, title: impl Into<RichText>, err: String) {
+    egui::Window::new("Error")
+        .fixed_size(vec2(200.0, 100.0))
+        .show(ctx, |ui| {
+            ui.heading(title);
+            ui.label(err)
+        });
+}
+
 impl<S: Saver> WindowApp<S> {
-    pub fn init_main(&mut self, ctx: &Context) {
+    fn init_main(&mut self, ctx: &Context) {
         let frame = egui::Frame::default().inner_margin(egui::Margin::symmetric(50.0, 20.0));
         egui::TopBottomPanel::bottom("controls").show(ctx, |ui| {
             ui.horizontal(|ui| {
                 if ui.button("Next").clicked() {
                     if let Err(err) = self.tracker.end_turn() {
-                        egui::Window::new("Error")
-                            .fixed_size(vec2(200.0, 100.0))
-                            .show(ctx, |ui| {
-                                ui.heading("Save error:");
-                                ui.label(err.to_string())
-                            });
+                        error_window(ctx, "Save error:", err.to_string());
                     };
                 };
                 if ui.button("add").clicked() {
@@ -112,26 +120,29 @@ impl<S: Saver> WindowApp<S> {
             });
     }
 
-    pub fn init_add(&mut self, ctx: &Context) {
+    fn init_add(&mut self, ctx: &Context) {
         let add_window = &mut self.add_window;
         if add_window.show {
             egui::Window::new("Add character")
                 .default_size(vec2(200.0, 100.0))
                 .show(ctx, |ui| {
                     let name_edit = ui.text_edit_singleline(&mut add_window.name);
-                    if add_window.focus {
-                        name_edit.request_focus();
-                        add_window.focus = false;
-                    }
                     let drag = egui::DragValue::new(&mut add_window.init).range(0..=50);
                     ui.add(drag);
                     ui.toggle_value(&mut add_window.player, "Player");
                     if ui.button("add").clicked() {
-                        self.tracker.add_chr(Chr::builder(add_window.name.clone(), add_window.init, add_window.player).build());
+                        let character = Chr::builder(add_window.name.clone(), add_window.init, add_window.player).build();
+                        if let Err(err) = self.tracker.add_chr(character) {
+                            error_window(ctx, "Save error", err.to_string());
+                        };
                         add_window.close();
                     };
                     if ui.button("cancel").clicked() {
                         add_window.close();
+                    }
+                    if add_window.focus {
+                        name_edit.request_focus();
+                        add_window.focus = false;
                     }
                 });
         }
