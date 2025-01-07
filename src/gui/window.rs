@@ -1,4 +1,4 @@
-use egui::{vec2, Context, RichText, Window};
+use egui::{vec2, Context, RichText, Ui, Window};
 
 use crate::{character::Chr, saver::Saver, tracker::Tracker};
 
@@ -100,22 +100,11 @@ impl<S: Saver> WindowApp<S> {
             .frame(frame)
             .show(ctx, |ui| {
                 ui.vertical(|ui| {
-                    self.tracker.get_chrs().iter().for_each(|c| {
-                        ui.style_mut().spacing.indent = 20.0;
-                        if self.tracker.get_in_turn() == Some(c) {
-                            ui.horizontal(|ui| {
-                                ui.heading(c.init.to_string());
-                                ui.label(c.name.clone());
-                            });
-                        } else {
-                            ui.indent(0, |ui| {
-                                ui.horizontal(|ui| {
-                                    ui.heading(c.init.to_string());
-                                    ui.label(c.name.clone());
-                                });
-                            });
-                        }
-                    });
+                    self.tracker
+                        .get_chrs()
+                        .to_owned()
+                        .iter()
+                        .for_each(|c| self.init_character(ctx, ui, c));
                 });
             });
     }
@@ -147,7 +136,33 @@ impl<S: Saver> WindowApp<S> {
                 });
         }
     }
+
+    fn init_character(&mut self, ctx: &Context, ui: &mut Ui, character: &Chr) {
+        ui.style_mut().spacing.indent = 20.0;
+        if self.tracker.get_in_turn() == Some(character) {
+            ui.horizontal(|ui| {
+                ui.heading(character.init.to_string());
+                ui.label(character.name.clone());
+                if ui.small_button("x").clicked() {
+                    if let Err(err) = self.tracker.rm_chr(&character.name) {
+                        error_window(ctx, "Save error", err.to_string())
+                    };
+                }
+            });
+        } else {
+            ui.indent(0, |ui| {
+                ui.horizontal(|ui| {
+                    ui.heading(character.init.to_string());
+                    ui.label(character.name.clone());
+                    if ui.small_button("x").clicked() {
+                        self.tracker.rm_chr(&character.name);
+                    }
+                });
+            });
+        }
+    }
 }
+
 
 impl<S: Saver> eframe::App for WindowApp<S> {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
