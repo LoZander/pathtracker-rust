@@ -145,7 +145,7 @@ impl<S: Saver> WindowApp<S> {
                 ui.label(character.name.clone());
                 if ui.small_button("x").clicked() {
                     if let Err(err) = self.tracker.rm_chr(&character.name) {
-                        error_window(ctx, "Save error", err.to_string())
+                        error_window(ctx, "Save error", err.to_string());
                     };
                 }
             });
@@ -155,7 +155,9 @@ impl<S: Saver> WindowApp<S> {
                     ui.heading(character.init.to_string());
                     ui.label(character.name.clone());
                     if ui.small_button("x").clicked() {
-                        self.tracker.rm_chr(&character.name);
+                        if let Err(err) = self.tracker.rm_chr(&character.name) {
+                            error_window(ctx, "Save error", err.to_string());
+                        }
                     }
                 });
             });
