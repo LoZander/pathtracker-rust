@@ -1,6 +1,8 @@
-use egui::{vec2, Context, RichText, Ui, Window};
+use std::ops::Div;
 
-use crate::{character::Chr, saver::Saver, tracker::Tracker};
+use egui::{vec2, Context, Id, Modal, ProgressBar, RichText, Ui, Window};
+
+use crate::{character::{Chr, Health}, saver::Saver, tracker::Tracker};
 
 pub fn run<S: Saver>(mut t: Tracker<S>) -> eframe::Result {
     let native_options = eframe::NativeOptions {
@@ -22,24 +24,15 @@ struct WindowApp<S: Saver> {
     add_window: AddWindow,
 }
 
+#[derive(Default)]
 struct AddWindow {
     show: bool,
     focus: bool,
     name: String,
     init: i32,
-    player: bool
-}
-
-impl Default for AddWindow {
-    fn default() -> Self {
-        Self {
-            show: false,
-            focus: false,
-            name: String::new(),
-            init: 0,
-            player: false
-        }
-    }
+    player: bool,
+    enable_health: bool,
+    health: u32
 }
 
 impl AddWindow {
@@ -47,6 +40,7 @@ impl AddWindow {
         self.name = String::new();
         self.init = 0;
         self.player = false;
+        self.enable_health = false;
     }
 
     fn open(&mut self) {
@@ -112,27 +106,57 @@ impl<S: Saver> WindowApp<S> {
     fn init_add(&mut self, ctx: &Context) {
         let add_window = &mut self.add_window;
         if add_window.show {
-            egui::Window::new("Add character")
-                .default_size(vec2(200.0, 100.0))
+            Modal::new(Id::new("add_character"))
                 .show(ctx, |ui| {
-                    let name_edit = ui.text_edit_singleline(&mut add_window.name);
-                    let drag = egui::DragValue::new(&mut add_window.init).range(0..=50);
-                    ui.add(drag);
-                    ui.toggle_value(&mut add_window.player, "Player");
-                    if ui.button("add").clicked() {
-                        let character = Chr::builder(add_window.name.clone(), add_window.init, add_window.player).build();
-                        if let Err(err) = self.tracker.add_chr(character) {
-                            error_window(ctx, "Save error", err.to_string());
-                        };
-                        add_window.close();
-                    };
-                    if ui.button("cancel").clicked() {
-                        add_window.close();
-                    }
+                    ui.heading("Add character");
+                    let name_edit = ui.horizontal(|ui| {
+                        ui.label("Name: ");
+                        ui.text_edit_singleline(&mut add_window.name)
+                    }).inner;
+
+                    ui.horizontal(|ui| {
+                        ui.label("Initiative: ");
+                        let drag = egui::DragValue::new(&mut add_window.init).range(0..=50);
+                        ui.add(drag);
+                    });
+
+                    ui.checkbox(&mut add_window.player, "Player");
+
+                    ui.horizontal(|ui| {
+                        ui.checkbox(&mut add_window.enable_health, "Track HP");
+
+                        if add_window.enable_health {
+                            ui.add_space(12.0);
+                            ui.label("Max HP:");
+                            let drag = egui::DragValue::new(&mut add_window.health).range(0..=999);
+                            ui.add(drag);
+                        }   
+                    });
+
+                    ui.separator();
+
+                    egui::Sides::new().show(ui, 
+                        |_| {},
+                        |ui| {
+                        if ui.button("confirm").clicked() {
+                            let c1 = Chr::builder(add_window.name.clone(), add_window.init, add_window.player);
+                            let c2 = if add_window.enable_health { c1.with_health(Health::new(add_window.health)) } else { c1 };
+                            let character = c2.build();
+                            if let Err(err) = self.tracker.add_chr(character) {
+                                error_window(ctx, "Save error", err.to_string());
+                            };
+                            add_window.close();
+                        }
+                        if ui.button("cancel").clicked() {
+                            add_window.close();
+                        }
+                    });
+
                     if add_window.focus {
                         name_edit.request_focus();
                         add_window.focus = false;
                     }
+                    
                 });
         }
     }
@@ -149,6 +173,10 @@ impl<S: Saver> WindowApp<S> {
                 ui.add_space(space);
                 ui.heading(character.init.to_string());
                 ui.label(character.name.clone());
+
+                if let Some(hp) = &character.health {
+                    ui.add(health_bar(hp));
+                }
             },
             |ui| {
                 if ui.small_button("x").clicked() {
@@ -159,6 +187,14 @@ impl<S: Saver> WindowApp<S> {
             }
         );
     }
+}
+
+fn health_bar(hp: &Health) -> ProgressBar {
+    let rel_hp: f32 = (hp.current as f32) / (hp.max as f32);
+    egui::ProgressBar::new(rel_hp)
+        .text(format!("{}/{}", hp.current, hp.max))
+        .rounding(2.0)
+        .desired_width(100.0)
 }
 
 
