@@ -7,6 +7,7 @@ pub mod condition_manager;
 
 #[derive(Debug, Clone)]
 #[derive(Serialize, Deserialize)]
+#[derive(PartialOrd, Ord)]
 pub enum Condition {
     Valued { cond: ValuedCondition, term: ValuedTerm, level: u8 },
     NonValued { cond: NonValuedCondition, term: NonValuedTerm }
@@ -49,7 +50,7 @@ impl Display for Condition {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 #[derive(Serialize, Deserialize, Hash)]
 pub enum TurnEvent {
     StartOfTurn(String),
@@ -67,7 +68,7 @@ impl Display for TurnEvent {
 
 
 #[derive(Debug, Clone, Default)]
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
 #[derive(Serialize, Deserialize, Hash)]
 pub enum NonValuedTerm {
     #[default]
@@ -87,7 +88,7 @@ impl Display for NonValuedTerm {
 }
 
 #[derive(Debug, Clone, Default)]
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
 #[derive(Serialize, Deserialize, Hash)]
 pub enum ValuedTerm {
     #[default]
