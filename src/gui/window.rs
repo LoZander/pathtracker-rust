@@ -139,8 +139,16 @@ impl AddCondWindow {
                 ui.group(|ui| {
                     ui.set_min_size(vec2(100.0, 100.0));
                     ui.vertical_centered(|ui| {
-                        ui.label("test 1");
-                        ui.label("test 2");
+                        let mut list: Vec<_> = tracker.get_conditions(self.character.as_ref().unwrap().name.as_str()).into_iter().collect();
+                        list.sort();
+                        ui.label(format!("CONDITIONS: {}", list.len()));
+                        let remove: Vec<_> = list.into_iter().cloned().filter(|cond| {
+                            ui.horizontal(|ui| {
+                                ui.label(cond.to_string());
+                                ui.button("x").clicked()
+                            }).inner
+                        }).collect();
+                        remove.into_iter().for_each(|cond| tracker.rm_condition(self.character.as_ref().unwrap().name.as_str(), &cond));
                     });
                 });
             });
@@ -350,7 +358,7 @@ impl<S: Saver> WindowApp<S> {
                 if conditions.len() <= 2 {
                     ui.label(condition_str);
                 } else {
-                    let cond_label = ui.label(format!("{condition_str} (+)"));
+                    let cond_label = ui.label(format!("{} (+)", conditions.iter().take(2).map(ToString::to_string).collect::<Vec<_>>().join(", ")));
                 }
 
             },
