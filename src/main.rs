@@ -14,5 +14,5 @@ fn main() {
 
     //terminalgui::run(t).expect("Tracker Error");
 
-    gui::window::run(t);
+    gui::windowgui::run(t);
 }
