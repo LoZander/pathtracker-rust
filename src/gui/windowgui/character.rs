@@ -29,14 +29,6 @@ pub fn init<S: Saver>(tracker: &Tracker<S>, ui: &mut Ui, character: &Chr) -> Opt
                 ui.add(health_bar(hp));
             }
 
-            let condition_str = conditions.iter().map(ToString::to_string).collect::<Vec<_>>().join(", ");
-
-            if conditions.len() <= 2 {
-                ui.label(condition_str);
-            } else {
-                let cond_label = ui.label(format!("{} (+)", conditions.iter().take(2).map(ToString::to_string).collect::<Vec<_>>().join(", ")));
-            }
-
         },
         |ui| {
             let mut open_cond_window = None;
@@ -51,6 +43,10 @@ pub fn init<S: Saver>(tracker: &Tracker<S>, ui: &mut Ui, character: &Chr) -> Opt
             } else {
                 None
             };
+
+            let condition_str = conditions.iter().map(ToString::to_string).collect::<Vec<_>>().join(", ");
+
+            ui.add(egui::Label::new(condition_str).truncate());
 
             open_cond_window.or(remove)
         }
