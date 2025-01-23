@@ -4,6 +4,14 @@ use egui::{vec2, Context, Ui};
 
 use crate::{character::Chr, conditions::{Condition, DamageType, NonValuedCondition, ValuedCondition}, saver::Saver, tracker::Tracker};
 
+use super::error_window;
+
+#[derive(Debug, Clone)]
+pub enum Response {
+    AddCondition{character: String, cond: Condition},
+    RemoveCondition{character: String, cond: Condition}
+}
+
 #[derive(Debug, Clone)]
 #[derive(PartialEq, Eq)]
 enum ConditionEntry {
@@ -47,58 +55,85 @@ impl CondWindow {
     
     pub fn init<S: Saver>(&mut self, tracker: &mut Tracker<S>, ctx: &Context, open: &mut bool) {
         //let frame = egui::Frame::default().inner_margin(egui::Margin::symmetric(20.0, 20.0));
-        let c = self.character.as_ref().map_or("missingno", |c| &c.name);
-        egui::Window::new(format!("{c} Conditions"))
-            .open(open)
-            .show(ctx, |ui| {
-            ui.horizontal(|ui| {
-                ui.vertical(|ui| {
-                    ui.label("Add Condition:");
-                    egui::ComboBox::from_label("Condition")
-                        .selected_text(format!("{}", self.selected))
-                        .show_ui(ui, |ui| self.init_selectable_conds(ui));
+        if let Some(character) = self.character.clone() {
+            let responses = egui::Window::new(format!("{} Conditions", character.name))
+                .open(open)
+                .show(ctx, |ui| {
+                ui.horizontal(|ui| {
+                    let add = ui.vertical(|ui| {
+                        ui.label("Add Condition:");
+                        egui::ComboBox::from_label("Condition")
+                            .selected_text(format!("{}", self.selected))
+                            .show_ui(ui, |ui| self.init_selectable_conds(ui));
 
-                    if let ConditionEntry::Valued(cond) = self.selected {
-                        ui.horizontal(|ui| {
-                            ui.label(cond.to_string());
-                            let drag = egui::DragValue::new(&mut self.cond_value).range(0..=9);
-                            ui.add(drag); 
-                        });
-                    }
-
-                    if ui.button("Add").clicked() {
-                        let condition = match self.selected {
-                            ConditionEntry::Valued(valued_condition) => {
-                                Condition::builder().condition(valued_condition)
-                                    .value(self.cond_value)
-                                    .build()
-                            },
-                            ConditionEntry::NonValued(non_valued_condition) => {
-                                Condition::builder().condition(non_valued_condition)
-                                    .build()
-                            },
-                        };
-                        tracker.add_condition(self.character.as_ref().unwrap().name.as_str(), condition).unwrap();
-                    }
-                });
-                
-                ui.group(|ui| {
-                    ui.set_min_size(vec2(100.0, 100.0));
-                    ui.vertical_centered(|ui| {
-                        let mut list: Vec<_> = tracker.get_conditions(self.character.as_ref().unwrap().name.as_str()).into_iter().collect();
-                        list.sort();
-                        ui.label(format!("CONDITIONS: {}", list.len()));
-                        let remove: Vec<_> = list.into_iter().cloned().filter(|cond| {
+                        if let ConditionEntry::Valued(cond) = self.selected {
                             ui.horizontal(|ui| {
                                 ui.label(cond.to_string());
-                                ui.button("x").clicked()
-                            }).inner
-                        }).collect();
-                        remove.into_iter().for_each(|cond| tracker.rm_condition(self.character.as_ref().unwrap().name.as_str(), &cond));
-                    });
-                });
-            });
-        });
+                                let drag = egui::DragValue::new(&mut self.cond_value).range(0..=9);
+                                ui.add(drag); 
+                            });
+                        }
+
+                        if ui.button("Add").clicked() {
+                            let condition = match self.selected {
+                                ConditionEntry::Valued(valued_condition) => {
+                                    Condition::builder().condition(valued_condition)
+                                        .value(self.cond_value)
+                                        .build()
+                                },
+                                ConditionEntry::NonValued(non_valued_condition) => {
+                                    Condition::builder().condition(non_valued_condition)
+                                        .build()
+                                },
+                            };
+
+                            Some(Response::AddCondition { character: character.name.to_string(), cond: condition })
+                        } else {
+                            None
+                        }
+                    }).inner;
+                
+                    let mut remove = ui.group(|ui| {
+                        ui.set_min_size(vec2(100.0, 100.0));
+                        ui.vertical_centered(|ui| {
+                            let mut list: Vec<_> = tracker.get_conditions(&character.name).into_iter().collect();
+                            list.sort();
+
+                            let m: Vec<_> = list.into_iter().filter(|&cond| {
+                                let (_, remove) = egui::Sides::new().show(ui,
+                                    |ui| ui.label(cond.to_string()),
+                                    |ui| ui.button("x").clicked()
+                                );
+                                remove
+                            }).map(|removed| Response::RemoveCondition{cond: removed.clone(), character: character.name.to_string()})
+                            .collect::<Vec<_>>();
+                            m
+
+                            //remove.into_iter().for_each(|cond| tracker.rm_condition(&c, &cond));
+                        }).inner
+                    }).inner;
+
+                    if let Some(inner) = add {
+                        remove.push(inner);
+                    }
+
+                    remove
+                }).inner
+            }).and_then(|m| m.inner);
+
+            if let Some(responses) = responses {
+                for resp in responses {
+                    match resp {
+                        Response::AddCondition { character, cond } => {
+                            if let Err(err) = tracker.add_condition(&character, cond) {
+                                error_window(ctx, "Save error", err.to_string());
+                            }
+                        },
+                        Response::RemoveCondition { character, cond } => tracker.rm_condition(&character, &cond),
+                    }
+                }
+            }
+        }
     }
 
     fn init_selectable_conds(&mut self, ui: &mut Ui) {
