@@ -30,42 +30,51 @@ pub fn init<S: Saver>(tracker: &Tracker<S>, ui: &mut Ui, character: &Chr) -> Opt
                 ui.label(character.name.clone());
             }
             
-            if let Some(hp) = &character.health {
-                ui.add_space(SEP);
-                ui.add(health_bar(hp));
-            }
+            ui.add_space(SEP);
 
+            if let Some(hp) = &character.health {
+                ui.add(health_bar(hp));
+                ui.add_space(SEP);
+            } else {
+                ui.add_space(HP_WIDTH + SEP + SEP);
+            }
         },
         |ui| {
-            let mut open_cond_window = None;
-            ui.menu_button("...", |ui| {
-                if ui.button("Conditions").clicked() {
-                    open_cond_window = Some(Response::OpenCondWindow(character.clone()));
-                }
-            });
-
             let remove = if ui.small_button("x").clicked() {
                 Some(Response::RemoveCharacter(character.clone()))
             } else {
                 None
             };
 
+            let mut open_cond_window_menu = None;
+            ui.menu_button("...", |ui| {
+                if ui.button("Conditions").clicked() {
+                    open_cond_window_menu = Some(Response::OpenCondWindow(character.clone()));
+                }
+            });
+
             let condition_str = conditions.iter().map(ToString::to_string).collect::<Vec<_>>().join(", ");
 
-            ui.add(egui::Label::new(condition_str).truncate());
+            let open_cond_window = if ui.add(egui::Label::new(condition_str).truncate()).clicked() {
+                Some(Response::OpenCondWindow(character.clone()))
+            } else {
+                None
+            };
 
-            open_cond_window.or(remove)
+            open_cond_window_menu
+                .or(open_cond_window)
+                .or(remove)
         }
     );
     right
 }
 
-const HP_LENGTH: f32 = 100.0;
+const HP_WIDTH: f32 = 100.0;
 
 fn health_bar(hp: &Health) -> ProgressBar {
     let rel_hp: f32 = (hp.current as f32) / (hp.max as f32);
     egui::ProgressBar::new(rel_hp)
         .text(format!("{}/{}", hp.current, hp.max))
         .rounding(2.0)
-        .desired_width(HP_LENGTH)
+        .desired_width(HP_WIDTH)
 }
