@@ -11,8 +11,8 @@ mod character;
 pub fn run<S: Saver>(t: Tracker<S>) -> eframe::Result {
     let native_options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_inner_size([400.0, 300.0])
-            .with_min_inner_size([300.0, 220.0]),
+            .with_inner_size([500.0, 300.0])
+            .with_min_inner_size([350.0, 200.0]),
         ..Default::default()
     };
 
@@ -53,7 +53,7 @@ fn error_window(ctx: &Context, title: impl Into<RichText>, err: String) {
 
 impl<S: Saver> WindowApp<S> {
     fn init_main(&mut self, ctx: &Context) {
-        let frame = egui::Frame::default().inner_margin(egui::Margin::symmetric(50.0, 20.0));
+        let frame = egui::Frame::default().inner_margin(egui::Margin::symmetric(40.0, 20.0));
         egui::TopBottomPanel::bottom("controls").show(ctx, |ui| {
             ui.horizontal(|ui| {
                 if ui.button("Next").clicked() {
