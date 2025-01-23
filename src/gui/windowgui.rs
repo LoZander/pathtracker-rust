@@ -70,26 +70,44 @@ impl<S: Saver> WindowApp<S> {
         egui::CentralPanel::default()
             .frame(frame)
             .show(ctx, |ui| {
-                ui.vertical(|ui| {
-                    let responses: Vec<_> = self.tracker
-                        .get_chrs()
-                        .iter()
-                        .filter_map(|c| character::init(&self.tracker, ui, c))
-                        .collect();
-                    for resp in responses {
-                        match resp {
-                            character::Response::RemoveCharacter(chr) => { 
-                                if let Err(err) = self.tracker.rm_chr(&chr.name) {
-                                    error_window(ctx, "Save error", err.to_string());
-                                }
-                            },
-                            character::Response::OpenCondWindow(chr) => {
-                                self.add_cond_window.prepare(chr);
-                                self.add_cond_window_open = true;
-                            },
-                        };
+                let (_, responses) = egui::Sides::new().show(ui,
+                    |ui| {
+                        ui.vertical(|ui| {
+                            self.tracker.get_chrs().iter().for_each(|c| {
+                                    character::init_left(&self.tracker, ui, c);
+                            });
+                        })
+                    },
+                    |ui| {
+                        ui.vertical(|ui| {
+                            self.tracker.get_chrs().iter().filter_map(|c| {
+                                    character::init_right(&self.tracker, ui, c)
+                            }).collect::<Vec<_>>()
+                        }).inner
                     }
-                });
+                );
+                for resp in responses {
+                    match resp {
+                        character::Response::RemoveCharacter(chr) => { 
+                            if let Err(err) = self.tracker.rm_chr(&chr.name) {
+                                error_window(ctx, "Save error", err.to_string());
+                            }
+                        },
+                        character::Response::OpenCondWindow(chr) => {
+                            self.add_cond_window.prepare(chr);
+                            self.add_cond_window_open = true;
+                        },
+                    };
+                }
+
+
+                // ui.vertical(|ui| {
+                //     let responses: Vec<_> = self.tracker
+                //         .get_chrs()
+                //         .iter()
+                //         .filter_map(|c| character::init(&self.tracker, ui, c))
+                //         .collect();
+                // });
             });
     }
 

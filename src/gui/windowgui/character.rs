@@ -10,63 +10,66 @@ pub enum Response {
 
 const IN_TURN_OFFSET: f32 = 20.0;
 const SEP: f32 = 10.0;
+const ENTRY_HEIGHT: f32 = 25.0;
 
-pub fn init<S: Saver>(tracker: &Tracker<S>, ui: &mut Ui, character: &Chr) -> Option<Response> {
-    ui.style_mut().spacing.indent = 20.0;
+pub fn init_left<S: Saver>(tracker: &Tracker<S>, ui: &mut Ui, character: &Chr) {
     let is_in_turn = tracker.get_in_turn() == Some(character);
-    let mut conditions: Vec<_> = tracker.get_conditions(&character.name).into_iter().map(ToOwned::to_owned).collect();
-    conditions.sort();
-    let (left, right) = egui::containers::Sides::new().show(ui,
-        |ui| {
-            if is_in_turn {
-                ui.add(egui::Label::new(egui::RichText::new(character.init.to_string()).heading().strong()));
-                ui.strong(character.name.clone());
+    ui.horizontal(|ui| {
+        ui.set_min_height(ENTRY_HEIGHT);
+        if is_in_turn {
+            ui.add(egui::Label::new(egui::RichText::new(character.init.to_string()).heading().strong()));
+            ui.strong(character.name.clone());
 
-                ui.add_space(IN_TURN_OFFSET);
-            } else {
-                ui.add_space(IN_TURN_OFFSET);
-                
-                ui.heading(character.init.to_string());
-                ui.label(character.name.clone());
-            }
-            
-            ui.add_space(SEP);
-
-            if let Some(hp) = &character.health {
-                ui.add(health_bar(hp));
-                ui.add_space(SEP);
-            } else {
-                ui.add_space(HP_WIDTH + SEP + SEP);
-            }
-        },
-        |ui| {
-            let remove = if ui.small_button("x").clicked() {
-                Some(Response::RemoveCharacter(character.clone()))
-            } else {
-                None
-            };
-
-            let mut open_cond_window_menu = None;
-            ui.menu_button("...", |ui| {
-                if ui.button("Conditions").clicked() {
-                    open_cond_window_menu = Some(Response::OpenCondWindow(character.clone()));
-                }
-            });
-
-            let condition_str = conditions.iter().map(ToString::to_string).collect::<Vec<_>>().join(", ");
-
-            let open_cond_window = if ui.add(egui::Label::new(condition_str).truncate()).clicked() {
-                Some(Response::OpenCondWindow(character.clone()))
-            } else {
-                None
-            };
-
-            open_cond_window_menu
-                .or(open_cond_window)
-                .or(remove)
+            ui.add_space(IN_TURN_OFFSET);
+        } else {
+            ui.add_space(IN_TURN_OFFSET);
+        
+            ui.heading(character.init.to_string());
+            ui.label(character.name.clone());
         }
-    );
-    right
+    
+        ui.add_space(SEP);
+
+        if let Some(hp) = &character.health {
+            ui.add(health_bar(hp));
+            ui.add_space(SEP);
+        } else {
+            ui.add_space(HP_WIDTH + SEP);
+        }
+    });
+}
+
+pub fn init_right<S: Saver>(tracker: &Tracker<S>, ui: &mut Ui, character: &Chr) -> Option<Response> {
+    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {        
+        ui.set_min_height(ENTRY_HEIGHT);
+        let remove = if ui.small_button("x").clicked() {
+            Some(Response::RemoveCharacter(character.clone()))
+        } else {
+            None
+        };
+
+        let mut open_cond_window_menu = None;
+
+        ui.menu_button("...", |ui| {
+            if ui.button("Conditions").clicked() {
+                open_cond_window_menu = Some(Response::OpenCondWindow(character.clone()));
+            }
+        });
+
+        let mut conditions: Vec<_> = tracker.get_conditions(&character.name).into_iter().map(ToOwned::to_owned).collect();
+        conditions.sort();
+        let condition_str = conditions.iter().map(ToString::to_string).collect::<Vec<_>>().join(", ");
+
+        let open_cond_window = if ui.add(egui::Label::new(condition_str).truncate()).clicked() {
+            Some(Response::OpenCondWindow(character.clone()))
+        } else {
+            None
+        };
+
+        open_cond_window_menu
+            .or(open_cond_window)
+            .or(remove)
+    }).inner
 }
 
 const HP_WIDTH: f32 = 100.0;
