@@ -159,7 +159,7 @@ pub enum NonValuedCondition {
     Controlled,
     Dazzled,
     Deafened,
-    Encumbered, // just makes you clumsy 1
+    Encumbered,
     Fascinated,
     Fatigued,
     FlatFooted,
