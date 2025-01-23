@@ -8,24 +8,30 @@ pub enum Response {
     OpenCondWindow(Chr)
 }
 
+const IN_TURN_OFFSET: f32 = 20.0;
+const SEP: f32 = 10.0;
 
 pub fn init<S: Saver>(tracker: &Tracker<S>, ui: &mut Ui, character: &Chr) -> Option<Response> {
     ui.style_mut().spacing.indent = 20.0;
-    let space = if tracker.get_in_turn() == Some(character) {
-        0.0
-    } else {
-        20.0
-    };
+    let is_in_turn = tracker.get_in_turn() == Some(character);
     let mut conditions: Vec<_> = tracker.get_conditions(&character.name).into_iter().map(ToOwned::to_owned).collect();
     conditions.sort();
     let (left, right) = egui::containers::Sides::new().show(ui,
         |ui| {
-            ui.add_space(space);
-            ui.heading(character.init.to_string());
-            ui.label(character.name.clone());
+            if is_in_turn {
+                ui.add(egui::Label::new(egui::RichText::new(character.init.to_string()).heading().strong()));
+                ui.strong(character.name.clone());
 
+                ui.add_space(IN_TURN_OFFSET);
+            } else {
+                ui.add_space(IN_TURN_OFFSET);
+                
+                ui.heading(character.init.to_string());
+                ui.label(character.name.clone());
+            }
+            
             if let Some(hp) = &character.health {
-                ui.add_space(10.0);
+                ui.add_space(SEP);
                 ui.add(health_bar(hp));
             }
 
@@ -54,10 +60,12 @@ pub fn init<S: Saver>(tracker: &Tracker<S>, ui: &mut Ui, character: &Chr) -> Opt
     right
 }
 
+const HP_LENGTH: f32 = 100.0;
+
 fn health_bar(hp: &Health) -> ProgressBar {
     let rel_hp: f32 = (hp.current as f32) / (hp.max as f32);
     egui::ProgressBar::new(rel_hp)
         .text(format!("{}/{}", hp.current, hp.max))
         .rounding(2.0)
-        .desired_width(100.0)
+        .desired_width(HP_LENGTH)
 }
