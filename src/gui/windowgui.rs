@@ -1,4 +1,5 @@
 use addwindow::AddWindow;
+use character::init_characters;
 use condwindow::CondWindow;
 use egui::{vec2, Context, RichText};
 
@@ -70,22 +71,23 @@ impl<S: Saver> WindowApp<S> {
         egui::CentralPanel::default()
             .frame(frame)
             .show(ctx, |ui| {
-                let (_, responses) = egui::Sides::new().show(ui,
-                    |ui| {
-                        ui.vertical(|ui| {
-                            self.tracker.get_chrs().iter().for_each(|c| {
-                                    character::init_left(&self.tracker, ui, c);
-                            });
-                        })
-                    },
-                    |ui| {
-                        ui.vertical(|ui| {
-                            self.tracker.get_chrs().iter().filter_map(|c| {
-                                    character::init_right(&self.tracker, ui, c)
-                            }).collect::<Vec<_>>()
-                        }).inner
-                    }
-                );
+                let responses = init_characters(&self.tracker, ui);
+                // let (_, responses) = egui::Sides::new().show(ui,
+                //     |ui| {
+                //         ui.vertical(|ui| {
+                //             self.tracker.get_chrs().iter().for_each(|c| {
+                //                     character::init_left(&self.tracker, ui, c);
+                //             });
+                //         })
+                //     },
+                //     |ui| {
+                //         ui.vertical(|ui| {
+                //             self.tracker.get_chrs().iter().filter_map(|c| {
+                //                     character::init_right(&self.tracker, ui, c)
+                //             }).collect::<Vec<_>>()
+                //         }).inner
+                //     }
+                // );
                 for resp in responses {
                     match resp {
                         character::Response::RemoveCharacter(chr) => { 
