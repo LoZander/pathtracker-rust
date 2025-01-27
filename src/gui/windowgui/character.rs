@@ -36,7 +36,7 @@ pub fn init_characters<S: Saver>(tracker: &Tracker<S>, ui: &mut Ui) -> Vec<Respo
     let mut responses = Vec::new();
 
     table.body(|body| {
-        let row_height = 18.0;
+        let row_height = 30.0;
         let number_of_rows = tracker.get_chrs().len();
         body.rows(row_height, number_of_rows, |mut row| {
             let index = row.index();
@@ -70,17 +70,19 @@ pub fn init_characters<S: Saver>(tracker: &Tracker<S>, ui: &mut Ui) -> Vec<Respo
             row.col(|ui| {
                 let mut conditions: Vec<_> = tracker.get_conditions(&character.name).into_iter().map(ToOwned::to_owned).collect();
                 conditions.sort();
-                let condition_str = conditions.iter().take(1).map(ToString::to_string).collect::<Vec<_>>().join(", ");
+                let condition_str = conditions.iter().take(2).map(ToString::to_string).collect::<Vec<_>>().join("\n");
 
-                let button = if conditions.len() <= 1 {
-                    ui.add(egui::Label::new(condition_str).truncate().halign(Align::Max))
+                let conds = if conditions.len() <= 2 {
+                    ui.add(egui::Label::new(condition_str).halign(Align::Max))
                 } else {
                     ui.add(egui::Label::new(format!("{condition_str} (+)")))
                 };
 
-                if button.clicked() {
+                if conds.clicked() {
                     responses.push(Response::OpenCondWindow(character.clone()));
                 }
+
+                conds.on_hover_text(conditions.iter().map(ToString::to_string).collect::<Vec<_>>().join("\n"));
             });
 
             row.col(|ui| {
