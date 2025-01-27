@@ -8,7 +8,8 @@ use crate::{character::{Chr, Health}, saver::Saver, tracker::Tracker};
 #[derive(Debug, Clone)]
 pub enum Response {
     RemoveCharacter(Chr),
-    OpenCondWindow(Chr)
+    OpenCondWindow(Chr),
+    RenameCharacter(Chr)
 }
 
 const IN_TURN_OFFSET: f32 = 20.0;
@@ -25,8 +26,8 @@ pub fn init_characters<S: Saver>(tracker: &Tracker<S>, ui: &mut Ui) -> Vec<Respo
         .column(Column::auto()) // Optional health
         .column(Column::remainder())
         .column(Column::auto()) // Conditions
-        .column(Column::auto())
-        .column(Column::auto());
+        .column(Column::auto()) // Options
+        .column(Column::auto()); // Remove
 
     let in_turn_index = tracker.get_chrs().iter().enumerate().find(|(_, c)| Some(*c) == tracker.get_in_turn()).map(|(i, _)| i);
     if let Some(index) = in_turn_index {
@@ -49,13 +50,19 @@ pub fn init_characters<S: Saver>(tracker: &Tracker<S>, ui: &mut Ui) -> Vec<Respo
                 }
             });
 
+            let mut bool = false;
+
             row.col(|ui| {
-                if is_in_turn {
+                let name = if is_in_turn {
                     ui.add(egui::Label::new(egui::RichText::new(format!("{:>2}", character.init.to_string())).size(18.0).monospace().strong()));
-                    ui.add(egui::Label::new(egui::RichText::new(character.name.clone()).size(16.0).strong()));
+                    ui.add(egui::Label::new(egui::RichText::new(character.name.clone()).size(16.0).strong()))
                 } else {
                     ui.add(egui::Label::new(egui::RichText::new(format!("{:>2}", character.init.to_string())).size(18.0).monospace()));
-                    ui.add(egui::Label::new(egui::RichText::new(character.name.clone()).size(16.0)));
+                    ui.add(egui::Label::new(egui::RichText::new(character.name.clone()).size(16.0)))
+                };
+
+                if name.clicked() {
+                    responses.push(Response::RenameCharacter(character.clone()));
                 }
             });
 
