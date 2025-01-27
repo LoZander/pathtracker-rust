@@ -70,9 +70,15 @@ pub fn init_characters<S: Saver>(tracker: &Tracker<S>, ui: &mut Ui) -> Vec<Respo
             row.col(|ui| {
                 let mut conditions: Vec<_> = tracker.get_conditions(&character.name).into_iter().map(ToOwned::to_owned).collect();
                 conditions.sort();
-                let condition_str = conditions.iter().map(ToString::to_string).collect::<Vec<_>>().join(", ");
+                let condition_str = conditions.iter().take(1).map(ToString::to_string).collect::<Vec<_>>().join(", ");
 
-                if ui.add(egui::Label::new(condition_str).truncate().halign(Align::Max)).clicked() {
+                let button = if conditions.len() <= 1 {
+                    ui.add(egui::Label::new(condition_str).truncate().halign(Align::Max))
+                } else {
+                    ui.add(egui::Label::new(format!("{condition_str} (+)")))
+                };
+
+                if button.clicked() {
                     responses.push(Response::OpenCondWindow(character.clone()));
                 }
             });
