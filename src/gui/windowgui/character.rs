@@ -9,7 +9,8 @@ use crate::{character::{Chr, Health}, saver::Saver, tracker::Tracker};
 pub enum Response {
     RemoveCharacter(Chr),
     OpenCondWindow(Chr),
-    RenameCharacter(Chr)
+    RenameCharacter(Chr),
+    OpenHealthWindow(Chr)
 }
 
 const IN_TURN_OFFSET: f32 = 20.0;
@@ -94,6 +95,11 @@ pub fn init_characters<S: Saver>(tracker: &Tracker<S>, ui: &mut Ui) -> Vec<Respo
 
             row.col(|ui| {
                 ui.menu_button("...", |ui| {
+                    if character.health.is_some() {
+                        if ui.button("Health").clicked() {
+                            responses.push(Response::OpenHealthWindow(character.clone()));
+                        }
+                    }
                     if ui.button("Conditions").clicked() {
                         responses.push(Response::OpenCondWindow(character.clone()));
                     }
@@ -175,8 +181,15 @@ const HP_WIDTH: f32 = 100.0;
 
 fn health_bar(hp: &Health) -> ProgressBar {
     let rel_hp: f32 = (hp.current as f32) / (hp.max as f32);
+
+    let hp_str = if hp.temp > 0 {
+        format!("{}/{} + {}", hp.current, hp.max, hp.temp)
+    } else {
+        format!("{}/{}", hp.current, hp.max)
+    };
+    
     egui::ProgressBar::new(rel_hp)
-        .text(format!("{}/{}", hp.current, hp.max))
+        .text(hp_str)
         .rounding(2.0)
         .desired_width(HP_WIDTH)
 }

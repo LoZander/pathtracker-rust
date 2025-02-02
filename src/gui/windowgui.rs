@@ -2,6 +2,7 @@ use addwindow::AddWindow;
 use character::init_characters;
 use condwindow::CondWindow;
 use egui::{vec2, Context, RichText};
+use healthwindow::HealthWindow;
 use renamewindow::RenameWindow;
 
 use crate::{saver::Saver, tracker::Tracker};
@@ -10,6 +11,7 @@ mod condwindow;
 mod addwindow;
 mod character;
 mod renamewindow;
+mod healthwindow;
 
 pub fn run<S: Saver>(t: Tracker<S>) -> eframe::Result {
     let native_options = eframe::NativeOptions {
@@ -32,6 +34,7 @@ struct WindowApp<S: Saver> {
     add_cond_window: CondWindow,
     add_cond_window_open: bool,
     rename_window: RenameWindow,
+    health_window: HealthWindow
 }
 
 impl<S: Saver> WindowApp<S> {
@@ -41,7 +44,8 @@ impl<S: Saver> WindowApp<S> {
             add_window: AddWindow::default(),
             add_cond_window: CondWindow::default(),
             add_cond_window_open: false,
-            rename_window: RenameWindow::default()
+            rename_window: RenameWindow::default(),
+            health_window: HealthWindow::default()
         }
     }
 }
@@ -106,7 +110,10 @@ impl<S: Saver> WindowApp<S> {
                         character::Response::RenameCharacter(chr) => {
                             self.rename_window.open(chr);
                         },
-                    };
+                        character::Response::OpenHealthWindow(chr) => {
+                            self.health_window.open(chr);
+                        },
+                    }
                 }
 
 
@@ -128,5 +135,6 @@ impl<S: Saver> eframe::App for WindowApp<S> {
         self.add_window.init(&mut self.tracker, ctx);
         self.add_cond_window.init(&mut self.tracker, ctx, &mut self.add_cond_window_open);
         self.rename_window.init(&mut self.tracker, ctx);
+        self.health_window.init(&mut self.tracker, ctx);
     }
 }
