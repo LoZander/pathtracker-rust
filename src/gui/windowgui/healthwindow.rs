@@ -48,36 +48,44 @@ impl HealthWindow {
 
                 ui.separator();
 
-                ui.horizontal(|ui| {
-                    ui.add(egui::DragValue::new(&mut self.health.current).range(0..=self.health.max));
-                    ui.label(" / ");
-                    ui.add(egui::DragValue::new(&mut self.health.max).range(0..=999));
-                    ui.label(" + ");
-                    ui.add(egui::DragValue::new(&mut self.health.temp).range(0..=999));
-                });
+                self.init_health_input(ui);
 
                 ui.separator();
 
-                egui::Sides::new().show(ui, 
-                    |_| {},
-                    |ui| {
-                        if ui.button("confirm").clicked() {
-                            let res = tracker.change_max_health(&name, self.health.max)
-                                .and(tracker.set_current_health(&name, self.health.current))
-                                .and(tracker.set_temp_health(&name, self.health.temp));
-
-                            if let Err(err) = res {
-                                super::error_window(ctx, "Error", err.to_string());
-                            }
-
-                            self.close();
-                        }
-
-                        if ui.button("cancel").clicked() {
-                            self.close();
-                        }
-                    });
+                self.init_confirmation_bar(tracker, ctx, ui, &name);
             }); 
         }
+    }
+
+    fn init_confirmation_bar(&mut self, tracker: &mut Tracker<impl Saver>, ctx: &Context, ui: &mut egui::Ui, name: &str) {
+        egui::Sides::new().show(ui, 
+            |_| {},
+            |ui| {
+                if ui.button("confirm").clicked() {
+                    let res = tracker.change_max_health(name, self.health.max)
+                        .and(tracker.set_current_health(name, self.health.current))
+                        .and(tracker.set_temp_health(name, self.health.temp));
+
+                    if let Err(err) = res {
+                        super::error_window(ctx, "Error", err.to_string());
+                    }
+
+                    self.close();
+                }
+
+                if ui.button("cancel").clicked() {
+                    self.close();
+                }
+            });
+    }
+
+    fn init_health_input(&mut self, ui: &mut egui::Ui) {
+        ui.horizontal(|ui| {
+            ui.add(egui::DragValue::new(&mut self.health.current).range(0..=self.health.max));
+            ui.label(" / ");
+            ui.add(egui::DragValue::new(&mut self.health.max).range(0..=999));
+            ui.label(" + ");
+            ui.add(egui::DragValue::new(&mut self.health.temp).range(0..=999));
+        });
     }
 }

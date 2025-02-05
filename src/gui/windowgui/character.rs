@@ -1,8 +1,4 @@
-use std::ops::Index;
-
-use egui::{Align, Context, ProgressBar, Ui};
-use egui_extras::{Column, TableBuilder};
-
+use egui::{Align, ProgressBar, Ui}; use egui_extras::{Column, TableBuilder, TableRow};
 use crate::{character::{Chr, Health}, saver::Saver, tracker::Tracker};
 
 #[derive(Debug, Clone)]
@@ -12,10 +8,6 @@ pub enum Response {
     RenameCharacter(Chr),
     OpenHealthWindow(Chr)
 }
-
-const IN_TURN_OFFSET: f32 = 20.0;
-const SEP: f32 = 10.0;
-const ENTRY_HEIGHT: f32 = 25.0;
 
 pub fn init_characters<S: Saver>(tracker: &Tracker<S>, ui: &mut Ui) -> Vec<Response> {
     let mut table = TableBuilder::new(ui)
@@ -45,136 +37,104 @@ pub fn init_characters<S: Saver>(tracker: &Tracker<S>, ui: &mut Ui) -> Vec<Respo
             let character = &tracker.get_chrs()[index];
             let is_in_turn = Some(character) == tracker.get_in_turn();
 
-            row.col(|ui| {
-                if is_in_turn {
-                    ui.add(egui::Label::new(egui::RichText::new(">").heading().strong()));
-                }
-            });
+            init_in_turn_marker_col(&mut row, is_in_turn);
 
-            let mut bool = false;
+            init_name_col(&mut responses, &mut row, character, is_in_turn);
 
-            row.col(|ui| {
-                let name = if is_in_turn {
-                    ui.add(egui::Label::new(egui::RichText::new(format!("{:>2}", character.init.to_string())).size(18.0).monospace().strong()));
-                    ui.add(egui::Label::new(egui::RichText::new(character.name.clone()).size(16.0).strong()))
-                } else {
-                    ui.add(egui::Label::new(egui::RichText::new(format!("{:>2}", character.init.to_string())).size(18.0).monospace()));
-                    ui.add(egui::Label::new(egui::RichText::new(character.name.clone()).size(16.0)))
-                };
-
-                if name.clicked() {
-                    responses.push(Response::RenameCharacter(character.clone()));
-                }
-            });
-
-            row.col(|ui| {
-                if let Some(health) = &character.health {
-                    ui.add(health_bar(health));
-                };
-            });
+            init_health_col(&mut row, character);
 
             row.col(|_| {});
 
-            row.col(|ui| {
-                let mut conditions: Vec<_> = tracker.get_conditions(&character.name).into_iter().map(ToOwned::to_owned).collect();
-                conditions.sort();
-                let condition_str = conditions.iter().take(2).map(ToString::to_string).collect::<Vec<_>>().join("\n");
+            init_conds_col(tracker, &mut responses, &mut row, character);
 
-                let conds = if conditions.len() <= 2 {
-                    ui.add(egui::Label::new(condition_str).halign(Align::Max))
-                } else {
-                    ui.add(egui::Label::new(format!("{condition_str} (+)")))
-                };
+            init_options_col(&mut responses, &mut row, character);
 
-                if conds.clicked() {
-                    responses.push(Response::OpenCondWindow(character.clone()));
-                }
-
-                conds.on_hover_text(conditions.iter().map(ToString::to_string).collect::<Vec<_>>().join("\n"));
-            });
-
-            row.col(|ui| {
-                ui.menu_button("...", |ui| {
-                    if character.health.is_some() {
-                        if ui.button("Health").clicked() {
-                            responses.push(Response::OpenHealthWindow(character.clone()));
-                        }
-                    }
-                    if ui.button("Conditions").clicked() {
-                        responses.push(Response::OpenCondWindow(character.clone()));
-                    }
-                });
-            });
-
-            row.col(|ui| {
-                if ui.small_button("x").clicked() {
-                    responses.push(Response::RemoveCharacter(character.clone()));
-                }
-            });
+            init_remove_col(&mut responses, row, character);
         });
     });
 
     responses
 }
 
-pub fn init_left<S: Saver>(tracker: &Tracker<S>, ui: &mut Ui, character: &Chr) {
-    let is_in_turn = tracker.get_in_turn() == Some(character);
-    ui.horizontal(|ui| {
-        ui.set_min_height(ENTRY_HEIGHT);
-        if is_in_turn {
-            ui.add(egui::Label::new(egui::RichText::new(character.init.to_string()).heading().strong()));
-            ui.strong(character.name.clone());
-
-            ui.add_space(IN_TURN_OFFSET);
-        } else {
-            ui.add_space(IN_TURN_OFFSET);
-        
-            ui.heading(character.init.to_string());
-            ui.label(character.name.clone());
-        }
-    
-        ui.add_space(SEP);
-
-        if let Some(hp) = &character.health {
-            ui.add(health_bar(hp));
-            ui.add_space(SEP);
-        } else {
-            ui.add_space(HP_WIDTH + SEP);
+fn init_remove_col(responses: &mut Vec<Response>, mut row: TableRow<'_, '_>, character: &Chr) {
+    row.col(|ui| {
+        if ui.small_button("x").clicked() {
+            responses.push(Response::RemoveCharacter(character.clone()));
         }
     });
 }
 
-pub fn init_right<S: Saver>(tracker: &Tracker<S>, ui: &mut Ui, character: &Chr) -> Option<Response> {
-    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {        
-        ui.set_min_height(ENTRY_HEIGHT);
-        let remove = if ui.small_button("x").clicked() {
-            Some(Response::RemoveCharacter(character.clone()))
-        } else {
-            None
-        };
-
-        let mut open_cond_window_menu = None;
-
+#[allow(clippy::collapsible_if)]
+fn init_options_col(responses: &mut Vec<Response>, row: &mut TableRow<'_, '_>, character: &Chr) {
+    row.col(|ui| {
         ui.menu_button("...", |ui| {
+            // NB: these ifs are nested instead of collapsed using && as the
+            // condition of the inner is effectful and adds a button. 
+            // As such, collapsing the two using &&, while having the exact 
+            // same behaviour due to the shortcircuting of &&, might accidentally
+            // imply that the order is insignificant.
+            if character.health.is_some() {
+                if ui.button("Health").clicked() {
+                    responses.push(Response::OpenHealthWindow(character.clone()));
+                }
+            }
             if ui.button("Conditions").clicked() {
-                open_cond_window_menu = Some(Response::OpenCondWindow(character.clone()));
+                responses.push(Response::OpenCondWindow(character.clone()));
             }
         });
+    });
+}
 
+fn init_conds_col(tracker: &Tracker<impl Saver>, responses: &mut Vec<Response>, row: &mut TableRow<'_, '_>, character: &Chr) {
+    row.col(|ui| {
         let mut conditions: Vec<_> = tracker.get_conditions(&character.name).into_iter().map(ToOwned::to_owned).collect();
         conditions.sort();
-        let condition_str = conditions.iter().map(ToString::to_string).collect::<Vec<_>>().join(", ");
+        let condition_str = conditions.iter().take(2).map(ToString::to_string).collect::<Vec<_>>().join("\n");
 
-        let open_cond_window = if ui.add(egui::Label::new(condition_str).truncate()).clicked() {
-            Some(Response::OpenCondWindow(character.clone()))
+        let conds = if conditions.len() <= 2 {
+            ui.add(egui::Label::new(condition_str).halign(Align::Max))
         } else {
-            None
+            ui.add(egui::Label::new(format!("{condition_str} (+)")))
         };
 
-        open_cond_window_menu
-            .or(open_cond_window)
-            .or(remove)
-    }).inner
+        if conds.clicked() {
+            responses.push(Response::OpenCondWindow(character.clone()));
+        }
+
+        conds.on_hover_text(conditions.iter().map(ToString::to_string).collect::<Vec<_>>().join("\n"));
+    });
+}
+
+fn init_in_turn_marker_col(row: &mut TableRow<'_, '_>, is_in_turn: bool) {
+    row.col(|ui| {
+        if is_in_turn {
+            ui.add(egui::Label::new(egui::RichText::new(">").heading().strong()));
+        }
+    });
+}
+
+fn init_health_col(row: &mut TableRow<'_, '_>, character: &Chr) {
+    row.col(|ui| {
+        if let Some(health) = &character.health {
+            ui.add(health_bar(health));
+        }
+    });
+}
+
+fn init_name_col(responses: &mut Vec<Response>, row: &mut TableRow<'_, '_>, character: &Chr, is_in_turn: bool) {
+    row.col(|ui| {
+        let name = if is_in_turn {
+            ui.add(egui::Label::new(egui::RichText::new(format!("{:>2}", character.init.to_string())).size(18.0).monospace().strong()));
+            ui.add(egui::Label::new(egui::RichText::new(character.name.clone()).size(16.0).strong()))
+        } else {
+            ui.add(egui::Label::new(egui::RichText::new(format!("{:>2}", character.init.to_string())).size(18.0).monospace()));
+            ui.add(egui::Label::new(egui::RichText::new(character.name.clone()).size(16.0)))
+        };
+
+        if name.clicked() {
+            responses.push(Response::RenameCharacter(character.clone()));
+        }
+    });
 }
 
 const HP_WIDTH: f32 = 100.0;

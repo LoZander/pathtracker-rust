@@ -68,11 +68,11 @@ impl<S: Saver> WindowApp<S> {
                 if ui.button("Next").clicked() {
                     if let Err(err) = self.tracker.end_turn() {
                         error_window(ctx, "Save error:", err.to_string());
-                    };
-                };
+                    }
+                }
                 if ui.button("add").clicked() {
                     self.add_window.open();
-                };
+                }
             });
         });
 
@@ -80,22 +80,6 @@ impl<S: Saver> WindowApp<S> {
             .frame(frame)
             .show(ctx, |ui| {
                 let responses = init_characters(&self.tracker, ui);
-                // let (_, responses) = egui::Sides::new().show(ui,
-                //     |ui| {
-                //         ui.vertical(|ui| {
-                //             self.tracker.get_chrs().iter().for_each(|c| {
-                //                     character::init_left(&self.tracker, ui, c);
-                //             });
-                //         })
-                //     },
-                //     |ui| {
-                //         ui.vertical(|ui| {
-                //             self.tracker.get_chrs().iter().filter_map(|c| {
-                //                     character::init_right(&self.tracker, ui, c)
-                //             }).collect::<Vec<_>>()
-                //         }).inner
-                //     }
-                // );
                 for resp in responses {
                     match resp {
                         character::Response::RemoveCharacter(chr) => { 
@@ -115,15 +99,6 @@ impl<S: Saver> WindowApp<S> {
                         },
                     }
                 }
-
-
-                // ui.vertical(|ui| {
-                //     let responses: Vec<_> = self.tracker
-                //         .get_chrs()
-                //         .iter()
-                //         .filter_map(|c| character::init(&self.tracker, ui, c))
-                //         .collect();
-                // });
             });
     }
 
