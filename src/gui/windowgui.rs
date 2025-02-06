@@ -32,9 +32,8 @@ struct WindowApp<S: Saver> {
     tracker: Tracker<S>,
     add_window: AddWindow,
     add_cond_window: CondWindow,
-    add_cond_window_open: bool,
     rename_window: RenameWindow,
-    health_window: HealthWindow
+    health_window: HealthWindow,
 }
 
 impl<S: Saver> WindowApp<S> {
@@ -43,13 +42,11 @@ impl<S: Saver> WindowApp<S> {
             tracker,
             add_window: AddWindow::default(),
             add_cond_window: CondWindow::default(),
-            add_cond_window_open: false,
             rename_window: RenameWindow::default(),
-            health_window: HealthWindow::default()
+            health_window: HealthWindow::default(),
         }
     }
 }
-
 
 fn error_window(ctx: &Context, title: impl Into<RichText>, err: String) {
     egui::Window::new("Error")
@@ -88,8 +85,7 @@ impl<S: Saver> WindowApp<S> {
                             }
                         },
                         character::Response::OpenCondWindow(chr) => {
-                            self.add_cond_window.prepare(chr);
-                            self.add_cond_window_open = true;
+                            self.add_cond_window.open(chr);
                         },
                         character::Response::RenameCharacter(chr) => {
                             self.rename_window.open(chr);
@@ -108,7 +104,7 @@ impl<S: Saver> eframe::App for WindowApp<S> {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.init_main(ctx);
         self.add_window.init(&mut self.tracker, ctx);
-        self.add_cond_window.init(&mut self.tracker, ctx, &mut self.add_cond_window_open);
+        self.add_cond_window.init(&mut self.tracker, ctx);
         self.rename_window.init(&mut self.tracker, ctx);
         self.health_window.init(&mut self.tracker, ctx);
     }
