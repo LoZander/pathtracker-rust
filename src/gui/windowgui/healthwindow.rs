@@ -43,9 +43,9 @@ impl HealthWindow {
         self.health = HealthData::default();
     }
 
-    pub fn show(&mut self, tracker: &mut Tracker<impl Saver>, ctx: &Context) {
-        if let Some(name) = self.character.as_ref().map(|c| c.name.to_string()) { 
-            egui::Modal::new("health window".into()).show(ctx, |ui| {
+    pub fn show(&mut self, tracker: &mut Tracker<impl Saver>, ctx: &Context) -> super::Result<()> {
+        self.character.as_ref().map(|c| c.name.to_string()).map_or(Ok(()), 
+            |name| egui::Modal::new("health window".into()).show(ctx, |ui| {
                 ui.heading(format!("Health of {name}"));
 
                 ui.separator();
@@ -54,29 +54,28 @@ impl HealthWindow {
 
                 ui.separator();
 
-                self.show_confirmation_bar(tracker, ctx, ui, &name);
-            }); 
-        }
+                self.show_confirmation_bar(tracker, ui, &name)?;
+
+                Ok(())
+            }).inner)
     }
 
-    fn show_confirmation_bar(&mut self, tracker: &mut Tracker<impl Saver>, ctx: &Context, ui: &mut egui::Ui, name: &str) {
+    fn show_confirmation_bar(&mut self, tracker: &mut Tracker<impl Saver>, ui: &mut egui::Ui, name: &str) -> super::Result<()> {
         let confirmation = super::init_confirmation_bar(ui);
 
         match confirmation {
             Some(Confirmation::Confirm) => {
-                let res = tracker.change_max_health(name, self.health.max)
-                    .and(tracker.set_current_health(name, self.health.current))
-                    .and(tracker.set_temp_health(name, self.health.temp));
-
-                if let Err(err) = res {
-                    super::error_window(ctx, "Error", err.to_string());
-                }
+                tracker.change_max_health(name, self.health.max)?;
+                tracker.set_current_health(name, self.health.current)?;
+                tracker.set_temp_health(name, self.health.temp)?;
 
                 self.close();
             },
             Some(Confirmation::Cancel) => self.close(),
             None => ()
         }
+
+        Ok(())
     }
 
     fn show_health_input(&mut self, ui: &mut egui::Ui) {

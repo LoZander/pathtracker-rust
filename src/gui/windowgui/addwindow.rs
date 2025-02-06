@@ -2,7 +2,7 @@ use egui::{Context, Id, Modal, Ui};
 
 use crate::{character::{Chr, Health}, saver::Saver, tracker::Tracker};
 
-use super::{error_window, Confirmation};
+use super::Confirmation;
 
 #[derive(Default)]
 pub struct AddWindow {
@@ -36,8 +36,8 @@ impl AddWindow {
         self.reset();
     }
 
-    pub fn show<S: Saver>(&mut self, tracker: &mut Tracker<S>, ctx: &Context) {
-        if !self.show { return }
+    pub fn show<S: Saver>(&mut self, tracker: &mut Tracker<S>, ctx: &Context) -> super::Result<()> {
+        if !self.show { return Ok(()) }
         Modal::new(Id::new("add_character"))
             .show(ctx, |ui| {
                 let name_edit = self.init_name_label(ui);
@@ -50,17 +50,18 @@ impl AddWindow {
 
                 ui.separator();
 
-                self.init_confirmation_bar(tracker, ctx, ui);
+                self.init_confirmation_bar(tracker, ui);
 
                 if self.focus {
                     name_edit.request_focus();
                     self.focus = false;
                 }
                 
-            });
+                Ok(())
+            }).inner
     }
 
-    fn init_confirmation_bar(&mut self, tracker: &mut Tracker<impl Saver>, ctx: &Context, ui: &mut Ui) {
+    fn init_confirmation_bar(&mut self, tracker: &mut Tracker<impl Saver>, ui: &mut Ui) -> super::Result<()> {
         let confirmation = super::init_confirmation_bar(ui);
 
         match confirmation {
@@ -68,14 +69,14 @@ impl AddWindow {
                 let c1 = Chr::builder(self.name.clone(), self.init, self.player);
                 let c2 = if self.enable_health { c1.with_health(Health::new(self.health)) } else { c1 };
                 let character = c2.build();
-                if let Err(err) = tracker.add_chr(character) {
-                    error_window(ctx, "Save error", err.to_string());
-                }
+                tracker.add_chr(character)?;
                 self.close();                
             },
             Some(Confirmation::Cancel) => self.close(),
             None => (),
-        }
+        };
+
+        Ok(())
     }
 
 

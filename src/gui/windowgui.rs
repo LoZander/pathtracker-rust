@@ -1,7 +1,7 @@
 use addwindow::AddWindow;
 use character::show_characters;
 use condwindow::CondWindow;
-use egui::{Context, RichText, Ui};
+use egui::{Context, Ui};
 use healthwindow::HealthWindow;
 use renamewindow::RenameWindow;
 
@@ -97,28 +97,21 @@ impl ErrorWindow {
     }
 }
 
-fn error_window(ctx: &Context, title: impl Into<RichText>, err: String) {
-    egui::Modal::new("error".into()).show(ctx, |ui| {
-        ui.heading(title);
-        ui.label(err)
-    });
-}
-
 impl<S: Saver> WindowApp<S> {
-    fn init_main(&mut self, ctx: &Context) {
+    fn init_main(&mut self, ctx: &Context) -> Result<()> {
         let frame = egui::Frame::default().inner_margin(egui::Margin::symmetric(40.0, 20.0));
         egui::TopBottomPanel::bottom("controls").show(ctx, |ui| {
             ui.horizontal(|ui| {
                 if ui.button("Next").clicked() {
-                    if let Err(err) = self.tracker.end_turn() {
-                        error_window(ctx, "Save error:", err.to_string());
-                    }
+                    self.tracker.end_turn()?;
                 }
                 if ui.button("add").clicked() {
                     self.add_window.open();
                 }
-            });
-        });
+
+                Ok::<(), Error>(())
+            }).inner
+        }).inner?;
 
         egui::CentralPanel::default()
             .frame(frame)
@@ -127,9 +120,7 @@ impl<S: Saver> WindowApp<S> {
                 for resp in responses {
                     match resp {
                         character::Response::RemoveCharacter(chr) => { 
-                            if let Err(err) = self.tracker.rm_chr(&chr.name) {
-                                error_window(ctx, "Save error", err.to_string());
-                            }
+                            self.tracker.rm_chr(&chr.name)?;
                         },
                         character::Response::OpenCondWindow(chr) => {
                             self.add_cond_window.open(chr);
@@ -142,7 +133,9 @@ impl<S: Saver> WindowApp<S> {
                         },
                     }
                 }
-            });
+
+                Ok(())
+            }).inner
     }
 
 }
@@ -150,13 +143,15 @@ impl<S: Saver> WindowApp<S> {
 impl<S: Saver> eframe::App for WindowApp<S> {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.error_window.show(ctx);
-        self.init_main(ctx);
-        self.add_window.show(&mut self.tracker, ctx);
-        self.add_cond_window.show(&mut self.tracker, ctx);
-        if let Err(err) = self.rename_window.show(&mut self.tracker, ctx) {
+        let res = self.init_main(ctx)
+            .and(self.add_window.show(&mut self.tracker, ctx))
+            .and(self.add_cond_window.show(&mut self.tracker, ctx))
+            .and(self.rename_window.show(&mut self.tracker, ctx))
+            .and(self.health_window.show(&mut self.tracker, ctx));
+
+        if let Err(err) = res {
             self.error_window.open(err);
         }
-        self.health_window.show(&mut self.tracker, ctx);
     }
 }
 

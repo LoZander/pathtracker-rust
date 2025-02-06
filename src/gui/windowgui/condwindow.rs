@@ -4,8 +4,6 @@ use egui::{vec2, Context, Ui};
 
 use crate::{character::Chr, conditions::{Condition, DamageType, NonValuedCondition, ValuedCondition}, saver::Saver, tracker::Tracker};
 
-use super::error_window;
-
 #[derive(Debug, Clone)]
 pub enum Response {
     AddCondition{character: String, cond: Condition},
@@ -66,12 +64,12 @@ impl CondWindow {
         self.open = false;
     }
     
-    pub fn show<S: Saver>(&mut self, tracker: &mut Tracker<S>, ctx: &Context) {
+    pub fn show<S: Saver>(&mut self, tracker: &mut Tracker<S>, ctx: &Context) -> super::Result<()> {
         //let frame = egui::Frame::default().inner_margin(egui::Margin::symmetric(20.0, 20.0));
         let open = &mut self.open;
         let data = &mut self.data;
         if let Some(character) = data.character.clone() {
-            egui::Window::new(format!("{} Conditions", character.name))
+            let res = egui::Window::new(format!("{} Conditions", character.name))
                 .open(open)
                 .show(ctx, |ui| {
                     let responses = ui.horizontal(|ui| {
@@ -89,14 +87,20 @@ impl CondWindow {
                     for resp in responses {
                         match resp {
                             Response::AddCondition { character, cond } => {
-                                if let Err(err) = tracker.add_condition(&character, cond) {
-                                    error_window(ctx, "Save error", err.to_string());
-                                }
+                                tracker.add_condition(&character, cond)?;
                             },
                             Response::RemoveCondition { character, cond } => tracker.rm_condition(&character, &cond),
                         }
                     }
+
+                    Ok::<(), super::Error>(())
                 });
+            match res {
+                Some(inner) => inner.inner.unwrap_or(Ok::<(), super::Error>(())),
+                None => Ok(()),
+            }
+        } else {
+            Ok(())
         }
     }
 
