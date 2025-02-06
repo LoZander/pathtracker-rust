@@ -9,7 +9,7 @@ pub enum Response {
     OpenHealthWindow(Chr)
 }
 
-pub fn init_characters<S: Saver>(tracker: &Tracker<S>, ui: &mut Ui) -> Vec<Response> {
+pub fn show_characters<S: Saver>(tracker: &Tracker<S>, ui: &mut Ui) -> Vec<Response> {
     let mut table = TableBuilder::new(ui)
         .cell_layout(egui::Layout::left_to_right(Align::Center))
         .auto_shrink(false)
@@ -37,26 +37,26 @@ pub fn init_characters<S: Saver>(tracker: &Tracker<S>, ui: &mut Ui) -> Vec<Respo
             let character = &tracker.get_chrs()[index];
             let is_in_turn = Some(character) == tracker.get_in_turn();
 
-            init_in_turn_marker_col(&mut row, is_in_turn);
+            show_in_turn_marker_col(&mut row, is_in_turn);
 
-            init_name_col(&mut responses, &mut row, character, is_in_turn);
+            show_name_col(&mut responses, &mut row, character, is_in_turn);
 
-            init_health_col(&mut row, character);
+            show_health_col(&mut row, character);
 
             row.col(|_| {});
 
-            init_conds_col(tracker, &mut responses, &mut row, character);
+            show_conds_col(tracker, &mut responses, &mut row, character);
 
-            init_options_col(&mut responses, &mut row, character);
+            show_options_col(&mut responses, &mut row, character);
 
-            init_remove_col(&mut responses, row, character);
+            show_remove_col(&mut responses, row, character);
         });
     });
 
     responses
 }
 
-fn init_remove_col(responses: &mut Vec<Response>, mut row: TableRow<'_, '_>, character: &Chr) {
+fn show_remove_col(responses: &mut Vec<Response>, mut row: TableRow<'_, '_>, character: &Chr) {
     row.col(|ui| {
         if ui.small_button("x").clicked() {
             responses.push(Response::RemoveCharacter(character.clone()));
@@ -65,7 +65,7 @@ fn init_remove_col(responses: &mut Vec<Response>, mut row: TableRow<'_, '_>, cha
 }
 
 #[allow(clippy::collapsible_if)]
-fn init_options_col(responses: &mut Vec<Response>, row: &mut TableRow<'_, '_>, character: &Chr) {
+fn show_options_col(responses: &mut Vec<Response>, row: &mut TableRow<'_, '_>, character: &Chr) {
     row.col(|ui| {
         ui.menu_button("...", |ui| {
             // NB: these ifs are nested instead of collapsed using && as the
@@ -85,7 +85,7 @@ fn init_options_col(responses: &mut Vec<Response>, row: &mut TableRow<'_, '_>, c
     });
 }
 
-fn init_conds_col(tracker: &Tracker<impl Saver>, responses: &mut Vec<Response>, row: &mut TableRow<'_, '_>, character: &Chr) {
+fn show_conds_col(tracker: &Tracker<impl Saver>, responses: &mut Vec<Response>, row: &mut TableRow<'_, '_>, character: &Chr) {
     row.col(|ui| {
         let mut conditions: Vec<_> = tracker.get_conditions(&character.name).into_iter().map(ToOwned::to_owned).collect();
         conditions.sort();
@@ -105,7 +105,7 @@ fn init_conds_col(tracker: &Tracker<impl Saver>, responses: &mut Vec<Response>, 
     });
 }
 
-fn init_in_turn_marker_col(row: &mut TableRow<'_, '_>, is_in_turn: bool) {
+fn show_in_turn_marker_col(row: &mut TableRow<'_, '_>, is_in_turn: bool) {
     row.col(|ui| {
         if is_in_turn {
             ui.add(egui::Label::new(egui::RichText::new(">").heading().strong()));
@@ -113,7 +113,7 @@ fn init_in_turn_marker_col(row: &mut TableRow<'_, '_>, is_in_turn: bool) {
     });
 }
 
-fn init_health_col(row: &mut TableRow<'_, '_>, character: &Chr) {
+fn show_health_col(row: &mut TableRow<'_, '_>, character: &Chr) {
     row.col(|ui| {
         if let Some(health) = &character.health {
             ui.add(health_bar(health));
@@ -121,7 +121,7 @@ fn init_health_col(row: &mut TableRow<'_, '_>, character: &Chr) {
     });
 }
 
-fn init_name_col(responses: &mut Vec<Response>, row: &mut TableRow<'_, '_>, character: &Chr, is_in_turn: bool) {
+fn show_name_col(responses: &mut Vec<Response>, row: &mut TableRow<'_, '_>, character: &Chr, is_in_turn: bool) {
     row.col(|ui| {
         let name = if is_in_turn {
             ui.add(egui::Label::new(egui::RichText::new(format!("{:>2}", character.init.to_string())).size(18.0).monospace().strong()));

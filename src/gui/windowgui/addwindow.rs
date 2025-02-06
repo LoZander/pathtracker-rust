@@ -2,7 +2,7 @@ use egui::{Context, Id, Modal, Ui};
 
 use crate::{character::{Chr, Health}, saver::Saver, tracker::Tracker};
 
-use super::error_window;
+use super::{error_window, Confirmation};
 
 #[derive(Default)]
 pub struct AddWindow {
@@ -25,7 +25,7 @@ impl AddWindow {
         self.enable_health = false;
     }
 
-    pub fn open(&mut self) {
+    pub const fn open(&mut self) {
         self.show = true;
         self.focus = true;
     }
@@ -36,7 +36,7 @@ impl AddWindow {
         self.reset();
     }
 
-    pub fn init<S: Saver>(&mut self, tracker: &mut Tracker<S>, ctx: &Context) {
+    pub fn show<S: Saver>(&mut self, tracker: &mut Tracker<S>, ctx: &Context) {
         if !self.show { return }
         Modal::new(Id::new("add_character"))
             .show(ctx, |ui| {
@@ -61,23 +61,23 @@ impl AddWindow {
     }
 
     fn init_confirmation_bar(&mut self, tracker: &mut Tracker<impl Saver>, ctx: &Context, ui: &mut Ui) {
-        egui::Sides::new().show(ui, 
-            |_| {},
-            |ui| {
-            if ui.button("confirm").clicked() {
+        let confirmation = super::init_confirmation_bar(ui);
+
+        match confirmation {
+            Some(Confirmation::Confirm) => {
                 let c1 = Chr::builder(self.name.clone(), self.init, self.player);
                 let c2 = if self.enable_health { c1.with_health(Health::new(self.health)) } else { c1 };
                 let character = c2.build();
                 if let Err(err) = tracker.add_chr(character) {
                     error_window(ctx, "Save error", err.to_string());
                 }
-                self.close();
-            }
-            if ui.button("cancel").clicked() {
-                self.close();
-            }
-        });
+                self.close();                
+            },
+            Some(Confirmation::Cancel) => self.close(),
+            None => (),
+        }
     }
+
 
     fn init_health_tracking(&mut self, ui: &mut Ui) {
         ui.horizontal(|ui| {

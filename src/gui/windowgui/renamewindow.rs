@@ -2,6 +2,8 @@ use egui::Context;
 
 use crate::{character::Chr, saver::Saver, tracker::Tracker};
 
+use super::Confirmation;
+
 #[derive(Debug, Clone)]
 #[derive(Default)]
 pub struct RenameWindow {
@@ -12,6 +14,11 @@ pub struct RenameWindow {
 }
 
 impl RenameWindow {
+    fn reset(&mut self) {
+        self.character = None;
+        self.new_name = String::new();
+    }
+
     pub fn open(&mut self, character: Chr) {
         self.new_name = character.name.to_string();
         self.character = Some(character);
@@ -22,10 +29,11 @@ impl RenameWindow {
     pub fn close(&mut self) {
         self.show = false;
         self.focus = false;
+        self.reset();
     }
 
-    pub fn init<S: Saver>(&mut self, tracker: &mut Tracker<S>, ctx: &Context) {
-        if !self.show { return }
+    pub fn show<S: Saver>(&mut self, tracker: &mut Tracker<S>, ctx: &Context) -> super::Result<()> {
+        if !self.show { return Ok(()) }
         egui::Modal::new("rename modal".into()).show(ctx, |ui| {
             ui.heading("Rename");
             let name_edit = ui.horizontal(|ui| {
@@ -35,27 +43,30 @@ impl RenameWindow {
 
             ui.separator();
 
-            egui::Sides::new().show(ui,
-                |_| {},
-                |ui| {
-                    if ui.button("confirm").clicked() {
-                        if let Some(character) = &self.character {
-                            if let Err(err) = tracker.rename(&character.name, self.new_name.clone()) {
-                                super::error_window(ctx, "Save error", err.to_string());
-                            }
-                        }
-                        self.close();
-                    }
+            let confirmation = super::init_confirmation_bar(ui);
 
-                    if ui.button("cancel").clicked() {
-                        self.close();
+            match confirmation {
+                Some(Confirmation::Confirm) => {
+                    if let Some(character) = &self.character {
+                        tracker.rename(&character.name, self.new_name.clone())?;
+                        // if let Err(err) = tracker.rename(&character.name, self.new_name.clone()) {
+                            
+                        //     super::error_window(ctx, "Error", err.to_string());
+                        // }
                     }
-                });
+                    self.close();
+                    
+                },
+                Some(Confirmation::Cancel) => self.close(),
+                None => ()
+            }
 
             if self.focus {
                 name_edit.request_focus();
                 self.focus = false;
             }
-        });
+
+            Ok(())
+        }).inner
     }
 }

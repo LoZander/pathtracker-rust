@@ -66,7 +66,7 @@ impl CondWindow {
         self.open = false;
     }
     
-    pub fn init<S: Saver>(&mut self, tracker: &mut Tracker<S>, ctx: &Context) {
+    pub fn show<S: Saver>(&mut self, tracker: &mut Tracker<S>, ctx: &Context) {
         //let frame = egui::Frame::default().inner_margin(egui::Margin::symmetric(20.0, 20.0));
         let open = &mut self.open;
         let data = &mut self.data;

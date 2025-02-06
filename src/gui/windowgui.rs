@@ -1,11 +1,11 @@
 use addwindow::AddWindow;
-use character::init_characters;
+use character::show_characters;
 use condwindow::CondWindow;
-use egui::{vec2, Context, RichText};
+use egui::{Context, RichText, Ui};
 use healthwindow::HealthWindow;
 use renamewindow::RenameWindow;
 
-use crate::{saver::Saver, tracker::Tracker};
+use crate::{saver::Saver, tracker::{self, Tracker}};
 
 mod condwindow;
 mod addwindow;
@@ -34,6 +34,7 @@ struct WindowApp<S: Saver> {
     add_cond_window: CondWindow,
     rename_window: RenameWindow,
     health_window: HealthWindow,
+    error_window: ErrorWindow,
 }
 
 impl<S: Saver> WindowApp<S> {
@@ -44,17 +45,63 @@ impl<S: Saver> WindowApp<S> {
             add_cond_window: CondWindow::default(),
             rename_window: RenameWindow::default(),
             health_window: HealthWindow::default(),
+            error_window: ErrorWindow::default(),
         }
     }
 }
 
-fn error_window(ctx: &Context, title: impl Into<RichText>, err: String) {
-    egui::Window::new("Error")
-        .fixed_size(vec2(200.0, 100.0))
-        .show(ctx, |ui| {
-            ui.heading(title);
-            ui.label(err)
+#[derive(thiserror::Error, Debug)]
+pub enum Error {
+    #[error(transparent)]
+    TrackerError(#[from] tracker::Error)
+}
+
+type Result<T> = std::result::Result<T, Error>;
+
+#[derive(Debug)]
+#[derive(Default)]
+struct ErrorWindow {
+    open: bool,
+    err: Option<Error>
+}
+
+impl ErrorWindow {
+    fn open(&mut self, err: Error) {
+        self.err = Some(err);
+        self.open = true;
+    }
+
+    const fn close(&mut self) {
+        self.open = false;
+    }
+
+    fn show(&mut self, ctx: &Context) {
+        if !self.open { return }
+        egui::Modal::new("error".into()).show(ctx, |ui| {
+            ui.heading("Error");
+
+            ui.separator();
+            
+            ui.label(self.err.as_ref().map_or("no error? This window opening is an error in and of itself.".into(), ToString::to_string));
+
+            ui.separator();
+
+            egui::Sides::new().show(ui, 
+                |_|{},
+                |ui|{
+                   if ui.button("ok").clicked() {
+                       self.close();
+                   }
+                });
         });
+    }
+}
+
+fn error_window(ctx: &Context, title: impl Into<RichText>, err: String) {
+    egui::Modal::new("error".into()).show(ctx, |ui| {
+        ui.heading(title);
+        ui.label(err)
+    });
 }
 
 impl<S: Saver> WindowApp<S> {
@@ -76,7 +123,7 @@ impl<S: Saver> WindowApp<S> {
         egui::CentralPanel::default()
             .frame(frame)
             .show(ctx, |ui| {
-                let responses = init_characters(&self.tracker, ui);
+                let responses = show_characters(&self.tracker, ui);
                 for resp in responses {
                     match resp {
                         character::Response::RemoveCharacter(chr) => { 
@@ -102,10 +149,36 @@ impl<S: Saver> WindowApp<S> {
 
 impl<S: Saver> eframe::App for WindowApp<S> {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        self.error_window.show(ctx);
         self.init_main(ctx);
-        self.add_window.init(&mut self.tracker, ctx);
-        self.add_cond_window.init(&mut self.tracker, ctx);
-        self.rename_window.init(&mut self.tracker, ctx);
-        self.health_window.init(&mut self.tracker, ctx);
+        self.add_window.show(&mut self.tracker, ctx);
+        self.add_cond_window.show(&mut self.tracker, ctx);
+        if let Err(err) = self.rename_window.show(&mut self.tracker, ctx) {
+            self.error_window.open(err);
+        }
+        self.health_window.show(&mut self.tracker, ctx);
     }
+}
+
+#[derive(Debug, Clone, Copy)]
+#[derive(Default)]
+enum Confirmation {
+    Confirm,
+    #[default]
+    Cancel
+}
+
+fn init_confirmation_bar(ui: &mut Ui) -> Option<Confirmation> {
+    egui::Sides::new().show(ui, 
+        |_| {},
+        |ui| {
+        if ui.button("confirm").clicked() {
+            return Some(Confirmation::Confirm)
+        }
+        if ui.button("cancel").clicked() {
+            return Some(Confirmation::Cancel)
+        }
+
+        None
+    }).1
 }
