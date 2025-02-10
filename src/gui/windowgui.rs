@@ -1,16 +1,27 @@
 use addwindow::AddWindow;
 use condwindow::CondWindow;
 use egui::{Context, Ui};
+use errorwindow::ErrorWindow;
 use healthwindow::HealthWindow;
 use renamewindow::RenameWindow;
 
 use crate::{saver::Saver, tracker::{self, Tracker}};
 
 mod condwindow;
+mod errorwindow;
 mod addwindow;
 mod characters;
 mod renamewindow;
 mod healthwindow;
+
+#[derive(Debug)]
+#[derive(thiserror::Error)]
+enum Error {
+    #[error(transparent)]
+    TrackerError(#[from] tracker::Error)
+}
+
+type Result<T> = std::result::Result<T, Error>;
 
 pub fn run<S: Saver>(t: Tracker<S>) -> eframe::Result {
     let native_options = eframe::NativeOptions {
@@ -46,53 +57,6 @@ impl<S: Saver> WindowApp<S> {
             health_window: HealthWindow::default(),
             error_window: ErrorWindow::default(),
         }
-    }
-}
-
-#[derive(thiserror::Error, Debug)]
-pub enum Error {
-    #[error(transparent)]
-    TrackerError(#[from] tracker::Error)
-}
-
-type Result<T> = std::result::Result<T, Error>;
-
-#[derive(Debug)]
-#[derive(Default)]
-struct ErrorWindow {
-    open: bool,
-    err: Option<Error>
-}
-
-impl ErrorWindow {
-    fn open(&mut self, err: Error) {
-        self.err = Some(err);
-        self.open = true;
-    }
-
-    const fn close(&mut self) {
-        self.open = false;
-    }
-
-    fn show(&mut self, ctx: &Context) {
-        if !self.open { return }
-        egui::Modal::new("error".into()).show(ctx, |ui| {
-            ui.heading("Error");
-
-            ui.separator();
-            
-            ui.label(self.err.as_ref().map_or("no error? This window opening is an error in and of itself.".into(), ToString::to_string));
-
-            ui.separator();
-
-            egui::Sides::new().show(ui, 
-                |_|{},
-                |ui|{
-                   if ui.button("ok").clicked() {
-                       self.close();
-                   }
-                });
-        });
     }
 }
 
