@@ -9,7 +9,7 @@ pub enum Response {
     OpenHealthWindow(Chr)
 }
 
-pub fn show_characters<S: Saver>(tracker: &Tracker<S>, ui: &mut Ui) -> Vec<Response> {
+pub fn show<S: Saver>(tracker: &Tracker<S>, ui: &mut Ui) -> Vec<Response> {
     let mut table = TableBuilder::new(ui)
         .cell_layout(egui::Layout::left_to_right(Align::Center))
         .auto_shrink(false)

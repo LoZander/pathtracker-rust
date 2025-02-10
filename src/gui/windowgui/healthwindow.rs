@@ -61,7 +61,7 @@ impl HealthWindow {
     }
 
     fn show_confirmation_bar(&mut self, tracker: &mut Tracker<impl Saver>, ui: &mut egui::Ui, name: &str) -> super::Result<()> {
-        let confirmation = super::init_confirmation_bar(ui);
+        let confirmation = super::show_confirmation_bar(ui);
 
         match confirmation {
             Some(Confirmation::Confirm) => {

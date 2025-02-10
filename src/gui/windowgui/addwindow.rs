@@ -62,7 +62,7 @@ impl AddWindow {
     }
 
     fn init_confirmation_bar(&mut self, tracker: &mut Tracker<impl Saver>, ui: &mut Ui) -> super::Result<()> {
-        let confirmation = super::init_confirmation_bar(ui);
+        let confirmation = super::show_confirmation_bar(ui);
 
         match confirmation {
             Some(Confirmation::Confirm) => {

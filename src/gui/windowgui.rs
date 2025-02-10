@@ -1,5 +1,4 @@
 use addwindow::AddWindow;
-use character::show_characters;
 use condwindow::CondWindow;
 use egui::{Context, Ui};
 use healthwindow::HealthWindow;
@@ -9,7 +8,7 @@ use crate::{saver::Saver, tracker::{self, Tracker}};
 
 mod condwindow;
 mod addwindow;
-mod character;
+mod characters;
 mod renamewindow;
 mod healthwindow;
 
@@ -98,8 +97,40 @@ impl ErrorWindow {
 }
 
 impl<S: Saver> WindowApp<S> {
-    fn init_main(&mut self, ctx: &Context) -> Result<()> {
+    fn show_main_window(&mut self, ctx: &Context) -> Result<()> {
+        self.show_button_panel(ctx)?;
+        self.show_character_panel(ctx)
+    }
+
+    fn show_character_panel(&mut self, ctx: &Context) -> std::result::Result<(), Error> {
         let frame = egui::Frame::default().inner_margin(egui::Margin::symmetric(40.0, 20.0));
+        egui::CentralPanel::default()
+            .frame(frame)
+            .show(ctx, |ui| {
+                let responses = characters::show(&self.tracker, ui);
+
+                for resp in responses {
+                    match resp {
+                        characters::Response::RemoveCharacter(chr) => { 
+                            self.tracker.rm_chr(&chr.name)?;
+                        },
+                        characters::Response::OpenCondWindow(chr) => {
+                            self.add_cond_window.open(chr);
+                        },
+                        characters::Response::RenameCharacter(chr) => {
+                            self.rename_window.open(chr);
+                        },
+                        characters::Response::OpenHealthWindow(chr) => {
+                            self.health_window.open(chr);
+                        },
+                    }
+                }
+
+                Ok(())
+            }).inner
+    }
+
+    fn show_button_panel(&mut self, ctx: &Context) -> Result<()> {
         egui::TopBottomPanel::bottom("controls").show(ctx, |ui| {
             ui.horizontal(|ui| {
                 if ui.button("Next").clicked() {
@@ -111,31 +142,7 @@ impl<S: Saver> WindowApp<S> {
 
                 Ok::<(), Error>(())
             }).inner
-        }).inner?;
-
-        egui::CentralPanel::default()
-            .frame(frame)
-            .show(ctx, |ui| {
-                let responses = show_characters(&self.tracker, ui);
-                for resp in responses {
-                    match resp {
-                        character::Response::RemoveCharacter(chr) => { 
-                            self.tracker.rm_chr(&chr.name)?;
-                        },
-                        character::Response::OpenCondWindow(chr) => {
-                            self.add_cond_window.open(chr);
-                        },
-                        character::Response::RenameCharacter(chr) => {
-                            self.rename_window.open(chr);
-                        },
-                        character::Response::OpenHealthWindow(chr) => {
-                            self.health_window.open(chr);
-                        },
-                    }
-                }
-
-                Ok(())
-            }).inner
+        }).inner
     }
 
 }
@@ -143,7 +150,7 @@ impl<S: Saver> WindowApp<S> {
 impl<S: Saver> eframe::App for WindowApp<S> {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.error_window.show(ctx);
-        let res = self.init_main(ctx)
+        let res = self.show_main_window(ctx)
             .and(self.add_window.show(&mut self.tracker, ctx))
             .and(self.add_cond_window.show(&mut self.tracker, ctx))
             .and(self.rename_window.show(&mut self.tracker, ctx))
@@ -159,11 +166,10 @@ impl<S: Saver> eframe::App for WindowApp<S> {
 #[derive(Default)]
 enum Confirmation {
     Confirm,
-    #[default]
-    Cancel
+    #[default] Cancel
 }
 
-fn init_confirmation_bar(ui: &mut Ui) -> Option<Confirmation> {
+fn show_confirmation_bar(ui: &mut Ui) -> Option<Confirmation> {
     egui::Sides::new().show(ui, 
         |_| {},
         |ui| {

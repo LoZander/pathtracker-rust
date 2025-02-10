@@ -43,7 +43,7 @@ impl RenameWindow {
 
             ui.separator();
 
-            let confirmation = super::init_confirmation_bar(ui);
+            let confirmation = super::show_confirmation_bar(ui);
 
             match confirmation {
                 Some(Confirmation::Confirm) => {
