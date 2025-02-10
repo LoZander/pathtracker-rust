@@ -1,11 +1,12 @@
 use addwindow::AddWindow;
 use condwindow::CondWindow;
+use dragvaluewindow::DragValueWindow;
 use egui::{Context, Ui};
 use errorwindow::ErrorWindow;
 use healthwindow::HealthWindow;
 use renamewindow::RenameWindow;
 
-use crate::{saver::Saver, tracker::{self, Tracker}};
+use crate::{character::Chr, saver::Saver, tracker::{self, Tracker}};
 
 mod condwindow;
 mod errorwindow;
@@ -13,6 +14,7 @@ mod addwindow;
 mod characters;
 mod renamewindow;
 mod healthwindow;
+mod dragvaluewindow;
 
 #[derive(Debug)]
 #[derive(thiserror::Error)]
@@ -45,6 +47,9 @@ struct WindowApp<S: Saver> {
     rename_window: RenameWindow,
     health_window: HealthWindow,
     error_window: ErrorWindow,
+    damage_window: DragValueWindow<u32, Chr>,
+    heal_window: DragValueWindow<u32, Chr>,
+    add_temp_hp_window: DragValueWindow<u32, Chr>,
 }
 
 impl<S: Saver> eframe::App for WindowApp<S> {
@@ -54,7 +59,10 @@ impl<S: Saver> eframe::App for WindowApp<S> {
             .and(self.add_window.show(&mut self.tracker, ctx))
             .and(self.add_cond_window.show(&mut self.tracker, ctx))
             .and(self.rename_window.show(&mut self.tracker, ctx))
-            .and(self.health_window.show(&mut self.tracker, ctx));
+            .and(self.health_window.show(&mut self.tracker, ctx))
+            .and(self.show_damage_window(ctx))
+            .and(self.show_heal_window(ctx))
+            .and(self.show_add_temp_hp_window(ctx));
 
         if let Err(err) = res {
             self.error_window.open(err);
@@ -71,6 +79,9 @@ impl<S: Saver> WindowApp<S> {
             rename_window: RenameWindow::default(),
             health_window: HealthWindow::default(),
             error_window: ErrorWindow::default(),
+            damage_window: DragValueWindow::default(),
+            heal_window: DragValueWindow::default(),
+            add_temp_hp_window: DragValueWindow::default(),
         }
     }
     
@@ -79,7 +90,40 @@ impl<S: Saver> WindowApp<S> {
         self.show_character_panel(ctx)
     }
 
-    fn show_character_panel(&mut self, ctx: &Context) -> std::result::Result<(), Error> {
+    fn show_damage_window(&mut self, ctx: &Context) -> Result<()> {
+        self.damage_window.show("damage_window".into(), ctx, 
+            |c,_| format!("Damage {}", c.name), 
+            |_,_| "Amount: ".into(),
+            |c,d|{
+                self.tracker.damage(&c.name, d)?;
+                Ok(())
+            }
+        )
+    }
+
+    fn show_heal_window(&mut self, ctx: &Context) -> Result<()> {
+        self.heal_window.show("heal_window".into(), ctx, 
+            |c,_| format!("Heal {}", c.name), 
+            |_,_| "Amount: ".into(),
+            |c,d|{
+                self.tracker.heal(&c.name, d)?;
+                Ok(())
+            }
+        )
+    }
+
+    fn show_add_temp_hp_window(&mut self, ctx: &Context) -> Result<()> {
+        self.add_temp_hp_window.show("add_temp_hp_window".into(), ctx, 
+            |c,_| format!("Add temp HP to {}", c.name), 
+            |_,_| "Amount: ".into(),
+            |c,d| {
+                self.tracker.add_temp_health(&c.name, d)?;
+                Ok(())
+            }
+        )
+    }
+
+    fn show_character_panel(&mut self, ctx: &Context) -> Result<()> {
         let frame = egui::Frame::default().inner_margin(egui::Margin::symmetric(40.0, 20.0));
         egui::CentralPanel::default()
             .frame(frame)
@@ -99,6 +143,15 @@ impl<S: Saver> WindowApp<S> {
                         },
                         characters::Response::OpenHealthWindow(chr) => {
                             self.health_window.open(chr);
+                        },
+                        characters::Response::OpenDamageWindow(chr) => {
+                            self.damage_window.open(chr);
+                        },
+                        characters::Response::OpenHealWindow(chr) => {
+                            self.heal_window.open(chr);
+                        },
+                        characters::Response::OpenAddTempHpWindow(chr) => {
+                            self.add_temp_hp_window.open(chr);
                         },
                     }
                 }

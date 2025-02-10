@@ -366,6 +366,10 @@ impl<S: Saver> Tracker<S> {
         self.unchecked_change(name, |chr| {chr.set_temp_health(hp);})
     }
 
+    pub fn add_temp_health(&mut self, name: &str, hp: u32) -> Result<()> {
+        self.unchecked_change(name, |chr| {chr.add_temp_health(hp);})
+    }
+
     /// Damages the character with the given [`name`] by the given [`amount`].
     ///
     /// # Errors

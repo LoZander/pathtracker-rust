@@ -34,6 +34,10 @@ impl Health {
     fn set_max(&mut self, max: u32) {
         self.max = max;
         self.current = self.current.min(max);
+    }
+
+    fn add_temp(&mut self, hp: u32) {
+        self.temp = self.temp + hp;
     } 
 }
 
@@ -106,6 +110,14 @@ impl Chr {
         } else {
             self.health = Some(Health::new(max));
         }
+    }
+
+    pub fn add_temp_health(&mut self, hp: u32) -> bool {
+        if let Some(health) = &mut self.health {
+            health.add_temp(hp);
+            return true
+        }
+        false
     }
 }
 

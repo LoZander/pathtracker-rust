@@ -6,7 +6,10 @@ pub enum Response {
     RemoveCharacter(Chr),
     OpenCondWindow(Chr),
     RenameCharacter(Chr),
-    OpenHealthWindow(Chr)
+    OpenHealthWindow(Chr),
+    OpenDamageWindow(Chr),
+    OpenHealWindow(Chr),
+    OpenAddTempHpWindow(Chr)
 }
 
 pub fn show<S: Saver>(tracker: &Tracker<S>, ui: &mut Ui) -> Vec<Response> {
@@ -41,7 +44,7 @@ pub fn show<S: Saver>(tracker: &Tracker<S>, ui: &mut Ui) -> Vec<Response> {
 
             show_name_col(&mut responses, &mut row, character, is_in_turn);
 
-            show_health_col(&mut row, character);
+            show_health_col(&mut responses, &mut row, character);
 
             row.col(|_| {});
 
@@ -49,14 +52,14 @@ pub fn show<S: Saver>(tracker: &Tracker<S>, ui: &mut Ui) -> Vec<Response> {
 
             show_options_col(&mut responses, &mut row, character);
 
-            show_remove_col(&mut responses, row, character);
+            show_remove_col(&mut responses, &mut row, character);
         });
     });
 
     responses
 }
 
-fn show_remove_col(responses: &mut Vec<Response>, mut row: TableRow<'_, '_>, character: &Chr) {
+fn show_remove_col(responses: &mut Vec<Response>, row: &mut TableRow<'_, '_>, character: &Chr) {
     row.col(|ui| {
         if ui.small_button("x").clicked() {
             responses.push(Response::RemoveCharacter(character.clone()));
@@ -68,18 +71,33 @@ fn show_remove_col(responses: &mut Vec<Response>, mut row: TableRow<'_, '_>, cha
 fn show_options_col(responses: &mut Vec<Response>, row: &mut TableRow<'_, '_>, character: &Chr) {
     row.col(|ui| {
         ui.menu_button("...", |ui| {
+            if ui.button("Conditions").clicked() {
+                responses.push(Response::OpenCondWindow(character.clone()));
+            }
+
             // NB: these ifs are nested instead of collapsed using && as the
             // condition of the inner is effectful and adds a button. 
             // As such, collapsing the two using &&, while having the exact 
             // same behaviour due to the shortcircuting of &&, might accidentally
             // imply that the order is insignificant.
             if character.health.is_some() {
-                if ui.button("Health").clicked() {
-                    responses.push(Response::OpenHealthWindow(character.clone()));
-                }
-            }
-            if ui.button("Conditions").clicked() {
-                responses.push(Response::OpenCondWindow(character.clone()));
+                ui.menu_button("Health", |ui| {
+                    if ui.button("Set HP").clicked() {
+                        responses.push(Response::OpenHealthWindow(character.clone()));
+                    }
+
+                    if ui.button("Damage").clicked() {
+                        responses.push(Response::OpenDamageWindow(character.clone()));
+                    }
+
+                    if ui.button("Heal").clicked() {
+                        responses.push(Response::OpenHealWindow(character.clone()));
+                    }
+
+                    if ui.button("Add Temp HP").clicked() {
+                        responses.push(Response::OpenAddTempHpWindow(character.clone()));
+                    }
+                });
             }
         });
     });
@@ -113,10 +131,38 @@ fn show_in_turn_marker_col(row: &mut TableRow<'_, '_>, is_in_turn: bool) {
     });
 }
 
-fn show_health_col(row: &mut TableRow<'_, '_>, character: &Chr) {
+fn show_health_col(responses: &mut Vec<Response>, row: &mut TableRow<'_, '_>, character: &Chr) {
     row.col(|ui| {
         if let Some(health) = &character.health {
-            ui.add(health_bar(health));
+            let bar_resp = ui.add(health_bar(health)).interact(egui::Sense::click());
+
+            if bar_resp.clicked() {
+                responses.push(Response::OpenHealthWindow(character.clone()));
+            }
+
+            let health_bar_menu_id = ui.make_persistent_id("health_bar_menu");
+
+            if bar_resp.secondary_clicked() {
+                ui.memory_mut(|mem| mem.toggle_popup(health_bar_menu_id));
+            }
+
+            egui::popup_below_widget(ui, health_bar_menu_id, &bar_resp, egui::PopupCloseBehavior::CloseOnClick, |ui| {
+                if ui.button("Damage").clicked() {
+                    responses.push(Response::OpenDamageWindow(character.clone()));
+                }
+
+                if ui.button("Heal").clicked() {
+                    responses.push(Response::OpenHealWindow(character.clone()));
+                }
+
+                if ui.button("Add temp").clicked() {
+                    responses.push(Response::OpenAddTempHpWindow(character.clone()));
+                }
+
+                if ui.button("Set HP").clicked() {
+                    responses.push(Response::OpenHealthWindow(character.clone()));
+                }
+            });
         }
     });
 }
