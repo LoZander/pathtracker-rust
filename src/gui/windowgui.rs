@@ -47,6 +47,21 @@ struct WindowApp<S: Saver> {
     error_window: ErrorWindow,
 }
 
+impl<S: Saver> eframe::App for WindowApp<S> {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        self.error_window.show(ctx);
+        let res = self.show_main_window(ctx)
+            .and(self.add_window.show(&mut self.tracker, ctx))
+            .and(self.add_cond_window.show(&mut self.tracker, ctx))
+            .and(self.rename_window.show(&mut self.tracker, ctx))
+            .and(self.health_window.show(&mut self.tracker, ctx));
+
+        if let Err(err) = res {
+            self.error_window.open(err);
+        }
+    }
+}
+
 impl<S: Saver> WindowApp<S> {
     pub fn new(tracker: Tracker<S>) -> Self {
         Self {
@@ -58,9 +73,7 @@ impl<S: Saver> WindowApp<S> {
             error_window: ErrorWindow::default(),
         }
     }
-}
-
-impl<S: Saver> WindowApp<S> {
+    
     fn show_main_window(&mut self, ctx: &Context) -> Result<()> {
         self.show_button_panel(ctx)?;
         self.show_character_panel(ctx)
@@ -108,23 +121,8 @@ impl<S: Saver> WindowApp<S> {
             }).inner
         }).inner
     }
-
 }
 
-impl<S: Saver> eframe::App for WindowApp<S> {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        self.error_window.show(ctx);
-        let res = self.show_main_window(ctx)
-            .and(self.add_window.show(&mut self.tracker, ctx))
-            .and(self.add_cond_window.show(&mut self.tracker, ctx))
-            .and(self.rename_window.show(&mut self.tracker, ctx))
-            .and(self.health_window.show(&mut self.tracker, ctx));
-
-        if let Err(err) = res {
-            self.error_window.open(err);
-        }
-    }
-}
 
 #[derive(Debug, Clone, Copy)]
 #[derive(Default)]
