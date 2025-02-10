@@ -5,6 +5,7 @@ use crate::{character::{Chr, Health}, saver::Saver, tracker::Tracker};
 use super::Confirmation;
 
 #[derive(Default)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct AddWindow {
     show: bool,
     focus: bool,
@@ -14,8 +15,6 @@ pub struct AddWindow {
     enable_health: bool,
     health: u32
 }
-
-
 
 impl AddWindow {
     fn reset(&mut self) {
@@ -40,17 +39,17 @@ impl AddWindow {
         if !self.show { return Ok(()) }
         Modal::new(Id::new("add_character"))
             .show(ctx, |ui| {
-                let name_edit = self.init_name_label(ui);
+                let name_edit = self.show_name_label(ui);
 
-                self.init_initiative(ui);
+                self.show_initiative(ui);
 
-                self.init_is_player(ui);
+                self.show_is_player(ui);
 
-                self.init_health_tracking(ui);
+                self.show_health_tracking_option(ui);
 
                 ui.separator();
 
-                self.init_confirmation_bar(tracker, ui);
+                self.show_confirmation_bar(tracker, ui)?;
 
                 if self.focus {
                     name_edit.request_focus();
@@ -61,7 +60,7 @@ impl AddWindow {
             }).inner
     }
 
-    fn init_confirmation_bar(&mut self, tracker: &mut Tracker<impl Saver>, ui: &mut Ui) -> super::Result<()> {
+    fn show_confirmation_bar(&mut self, tracker: &mut Tracker<impl Saver>, ui: &mut Ui) -> super::Result<()> {
         let confirmation = super::show_confirmation_bar(ui);
 
         match confirmation {
@@ -74,13 +73,13 @@ impl AddWindow {
             },
             Some(Confirmation::Cancel) => self.close(),
             None => (),
-        };
+        }
 
         Ok(())
     }
 
 
-    fn init_health_tracking(&mut self, ui: &mut Ui) {
+    fn show_health_tracking_option(&mut self, ui: &mut Ui) {
         ui.horizontal(|ui| {
             ui.checkbox(&mut self.enable_health, "Track HP");
 
@@ -93,11 +92,11 @@ impl AddWindow {
         });
     }
 
-    fn init_is_player(&mut self, ui: &mut Ui) {
+    fn show_is_player(&mut self, ui: &mut Ui) {
         ui.checkbox(&mut self.player, "Player");
     }
 
-    fn init_initiative(&mut self, ui: &mut Ui) {
+    fn show_initiative(&mut self, ui: &mut Ui) {
         ui.horizontal(|ui| {
             ui.label("Initiative: ");
             let drag = egui::DragValue::new(&mut self.init).range(0..=50);
@@ -105,7 +104,7 @@ impl AddWindow {
         });
     }
 
-    fn init_name_label(&mut self, ui: &mut Ui) -> egui::Response {
+    fn show_name_label(&mut self, ui: &mut Ui) -> egui::Response {
         ui.heading("Add character");
         
         ui.horizontal(|ui| {
@@ -113,5 +112,4 @@ impl AddWindow {
             ui.text_edit_singleline(&mut self.name)
         }).inner
     }
-
 }

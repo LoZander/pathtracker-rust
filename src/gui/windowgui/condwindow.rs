@@ -73,9 +73,9 @@ impl CondWindow {
                 .open(open)
                 .show(ctx, |ui| {
                     let responses = ui.horizontal(|ui| {
-                        let add = add_cond_section(ui, data, &character);
+                        let add = show_cond_section(ui, data, &character);
                 
-                        let mut remove = cond_list_section(tracker, ui, &character);
+                        let mut remove = show_cond_list_section(tracker, ui, &character);
 
                         if let Some(inner) = add {
                             remove.push(inner);
@@ -106,17 +106,17 @@ impl CondWindow {
 
 }
 
-fn add_cond_section(ui: &mut Ui, data: &mut Data, character: &Chr) -> Option<Response> {
+fn show_cond_section(ui: &mut Ui, data: &mut Data, character: &Chr) -> Option<Response> {
     ui.vertical(|ui| {
         ui.label("Add Condition:");
 
-        cond_selector(ui, data);
+        show_cond_selector(ui, data);
 
-        add_button(ui, data, character)
+        show_add_button(ui, data, character)
     }).inner
 }
 
-fn add_button(ui: &mut Ui, data: &Data, character: &Chr) -> Option<Response> {
+fn show_add_button(ui: &mut Ui, data: &Data, character: &Chr) -> Option<Response> {
     if ui.button("Add").clicked() {
         let condition = match data.selected {
             ConditionEntry::Valued(valued_condition) => {
@@ -136,7 +136,7 @@ fn add_button(ui: &mut Ui, data: &Data, character: &Chr) -> Option<Response> {
     }
 }
 
-fn cond_selector(ui: &mut Ui, data: &mut Data) {
+fn show_cond_selector(ui: &mut Ui, data: &mut Data) {
     egui::ComboBox::from_label("Condition")
         .selected_text(format!("{}", data.selected))
         .show_ui(ui, |ui| selectable_conds(ui, data));
@@ -218,7 +218,7 @@ fn selectable_valued_cond(ui: &mut Ui, data: &mut Data, cond: ValuedCondition) {
     ui.selectable_value(&mut data.selected, ConditionEntry::Valued(cond), cond.to_string());
 }
 
-fn cond_list_section(tracker: &Tracker<impl Saver>, ui: &mut Ui, character: &Chr) -> Vec<Response> {
+fn show_cond_list_section(tracker: &Tracker<impl Saver>, ui: &mut Ui, character: &Chr) -> Vec<Response> {
     ui.group(|ui| {
         ui.set_min_size(vec2(100.0, 100.0));
         ui.vertical_centered(|ui| {
