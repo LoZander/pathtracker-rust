@@ -355,14 +355,19 @@ impl<S: Saver> Tracker<S> {
     /// - There's no character with the given [`name`] 
     /// - Auto saving fails.
     pub fn change_max_health(&mut self, name: &str, max: u32) -> Result<()> {
-        self.unchecked_change(name, |chr| {
-            if let Some(hp) = &mut chr.health {
-                hp.max = max;
-                hp.current = hp.current.min(max);
-            } else {
-                chr.health = Some(Health::new(max));
-            }
-        })
+        self.unchecked_change(name, |chr| {chr.set_max_health(max);})
+    }
+
+    pub fn set_current_health(&mut self, name: &str, hp: u32) -> Result<()> {
+        self.unchecked_change(name, |chr| {chr.set_current_health(hp);})
+    }
+
+    pub fn set_temp_health(&mut self, name: &str, hp: u32) -> Result<()> {
+        self.unchecked_change(name, |chr| {chr.set_temp_health(hp);})
+    }
+
+    pub fn add_temp_health(&mut self, name: &str, hp: u32) -> Result<()> {
+        self.unchecked_change(name, |chr| {chr.add_temp_health(hp);})
     }
 
     /// Damages the character with the given [`name`] by the given [`amount`].

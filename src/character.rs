@@ -21,6 +21,23 @@ impl Health {
 
     fn damage(&mut self, x: u32) {
         self.current = self.current.saturating_sub(x);
+    }
+
+    fn set_temp(&mut self, hp: u32) {
+        self.temp = hp
+    }
+
+    fn set_current(&mut self, hp: u32) {
+        self.current = hp.min(self.max)
+    }
+
+    fn set_max(&mut self, max: u32) {
+        self.max = max;
+        self.current = self.current.min(max);
+    }
+
+    fn add_temp(&mut self, hp: u32) {
+        self.temp = self.temp + hp;
     } 
 }
 
@@ -66,6 +83,38 @@ impl Chr {
     pub fn damage(&mut self, x: u32) -> bool {
         if let Some(health) = self.health.as_mut() {
             health.damage(x);
+            return true
+        }
+        false
+    }
+
+    pub fn set_temp_health(&mut self, hp: u32) -> bool {
+        if let Some(health) = &mut self.health {
+            health.set_temp(hp);
+            return true
+        }
+        false
+    }
+
+    pub fn set_current_health(&mut self, hp: u32) -> bool {
+        if let Some(health) = &mut self.health {
+            health.set_current(hp);
+            return true
+        }
+        false
+    }
+
+    pub fn set_max_health(&mut self, max: u32) {
+        if let Some(hp) = &mut self.health {
+            hp.set_max(max)
+        } else {
+            self.health = Some(Health::new(max));
+        }
+    }
+
+    pub fn add_temp_health(&mut self, hp: u32) -> bool {
+        if let Some(health) = &mut self.health {
+            health.add_temp(hp);
             return true
         }
         false

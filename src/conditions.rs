@@ -7,6 +7,7 @@ pub mod condition_manager;
 
 #[derive(Debug, Clone)]
 #[derive(Serialize, Deserialize)]
+#[derive(PartialOrd, Ord)]
 pub enum Condition {
     Valued { cond: ValuedCondition, term: ValuedTerm, level: u8 },
     NonValued { cond: NonValuedCondition, term: NonValuedTerm }
@@ -16,6 +17,20 @@ impl Condition {
     #[must_use]
     pub fn builder() -> ConditionBuilder {
         ConditionBuilder::default()
+    }
+
+    pub fn to_long_string(&self) -> String {
+        match self {
+            Self::Valued { cond, term, level } => format!("{cond} {level} {term}"),
+            Self::NonValued { cond, term } => format!("{cond} {term}"),
+        }
+    }
+
+    pub fn to_short_string(&self) -> String {
+        match self {
+            Condition::Valued { cond, term, level } => format!("{cond} {}", term.to_short_string()),
+            Condition::NonValued { cond, term } => format!("{cond} {}", term.to_short_string())
+        }
     }
 }
 
@@ -49,7 +64,7 @@ impl Display for Condition {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 #[derive(Serialize, Deserialize, Hash)]
 pub enum TurnEvent {
     StartOfTurn(String),
@@ -67,13 +82,31 @@ impl Display for TurnEvent {
 
 
 #[derive(Debug, Clone, Default)]
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
 #[derive(Serialize, Deserialize, Hash)]
 pub enum NonValuedTerm {
     #[default]
     Manual,
     For(Duration),
     Until(TurnEvent)
+}
+
+impl NonValuedTerm {
+    pub fn to_short_string(&self) -> String {
+        match self {
+            Self::Manual => String::new(),
+            Self::For(_) => "for...".into(),
+            Self::Until(_) => "until...".into(),
+        }
+    }
+
+    pub fn to_long_string(&self) -> String {
+        match self {
+            Self::Manual => String::new(),
+            Self::For(dur) => format!("for {} turns", dur.in_turns()),
+            Self::Until(event) => format!("until {event}"),
+        }
+    }
 }
 
 impl Display for NonValuedTerm {
@@ -87,7 +120,7 @@ impl Display for NonValuedTerm {
 }
 
 #[derive(Debug, Clone, Default)]
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
 #[derive(Serialize, Deserialize, Hash)]
 pub enum ValuedTerm {
     #[default]
@@ -96,6 +129,27 @@ pub enum ValuedTerm {
     Until(TurnEvent),
     Reduced(TurnEvent, u8)
 }
+
+impl ValuedTerm {
+    pub fn to_short_string(&self) -> String {
+        match self {
+            ValuedTerm::Manual => String::new(),
+            ValuedTerm::For(_) => "for...".into(),
+            ValuedTerm::Until(_) => "until...".into(),
+            ValuedTerm::Reduced(_, _) => "reduced...".into(),
+        }
+    }
+
+    pub fn to_long_string(&self) -> String {
+        match self {
+            Self::Manual => String::new(),
+            Self::For(dur) => format!("for {} turns", dur.in_turns()),
+            Self::Until(event) => format!("until {event}"),
+            Self::Reduced(event, r) => format!("reduced by {r} at {event}"),
+        }
+    }
+}
+
 
 impl Display for ValuedTerm {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -158,7 +212,7 @@ pub enum NonValuedCondition {
     Controlled,
     Dazzled,
     Deafened,
-    Encumbered, // just makes you clumsy 1
+    Encumbered,
     Fascinated,
     Fatigued,
     FlatFooted,
@@ -274,20 +328,20 @@ pub trait CondType {}
 impl CondType for ValuedCondition {}
 impl CondType for NonValuedCondition {}
 
-pub struct ConditionBuilder<Cond=Empty,Value=Empty,Term=Empty> {
+pub struct ConditionBuilder<Cond = Empty, Value = Empty, Term = Empty> {
     cond: Cond,
     value: Value,
-    term: Term
+    term: Term,
 }
 
-impl Default for ConditionBuilder<Empty,Empty,Empty> {
+impl Default for ConditionBuilder<Empty, Empty, Empty> {
     #[must_use]
     fn default() -> Self {
         Self { cond: Empty, value: Empty, term: Empty }
     }
 }
 
-impl ConditionBuilder<Empty,Empty,Empty> {
+impl ConditionBuilder<Empty, Empty, Empty> {
     #[must_use]
     pub const fn condition<Cond: CondType>(self, cond: Cond) -> ConditionBuilder<Cond,Empty,Empty> {
         ConditionBuilder {
@@ -298,7 +352,7 @@ impl ConditionBuilder<Empty,Empty,Empty> {
     }
 }
 
-impl<Term> ConditionBuilder<NonValuedCondition,Empty,Term> {
+impl<Term> ConditionBuilder<NonValuedCondition, Empty, Term> {
     #[must_use]
     pub fn term(self, term: NonValuedTerm) -> ConditionBuilder<NonValuedCondition,Empty,NonValuedTerm> {
         ConditionBuilder {
@@ -309,7 +363,7 @@ impl<Term> ConditionBuilder<NonValuedCondition,Empty,Term> {
     }
 }
 
-impl ConditionBuilder<NonValuedCondition,Empty,NonValuedTerm> {
+impl ConditionBuilder<NonValuedCondition, Empty, NonValuedTerm> {
     #[must_use]
     pub fn build(self) -> Condition {
         Condition::NonValued {
@@ -319,7 +373,7 @@ impl ConditionBuilder<NonValuedCondition,Empty,NonValuedTerm> {
     }
 }
 
-impl ConditionBuilder<NonValuedCondition,Empty,Empty> {
+impl ConditionBuilder<NonValuedCondition, Empty, Empty> {
     #[must_use]
     pub fn build(self) -> Condition {
         Condition::NonValued {
@@ -329,10 +383,9 @@ impl ConditionBuilder<NonValuedCondition,Empty,Empty> {
     }
 }
 
-
-impl<Value,Term> ConditionBuilder<ValuedCondition,Value,Term> {
+impl<Value, Term> ConditionBuilder<ValuedCondition, Value, Term> {
     #[must_use]
-    pub fn value(self, value: u8) -> ConditionBuilder<ValuedCondition,u8,Term> {
+    pub fn value(self, value: u8) -> ConditionBuilder<ValuedCondition, u8, Term> {
         ConditionBuilder {
             cond: self.cond,
             value,
@@ -341,7 +394,7 @@ impl<Value,Term> ConditionBuilder<ValuedCondition,Value,Term> {
     }
 
     #[must_use]
-    pub fn term(self, term: ValuedTerm) -> ConditionBuilder<ValuedCondition,Value,ValuedTerm> {
+    pub fn term(self, term: ValuedTerm) -> ConditionBuilder<ValuedCondition, Value, ValuedTerm> {
         ConditionBuilder {
             cond: self.cond,
             value: self.value,
@@ -350,7 +403,7 @@ impl<Value,Term> ConditionBuilder<ValuedCondition,Value,Term> {
     }
 }
 
-impl ConditionBuilder<ValuedCondition,u8,ValuedTerm> {
+impl ConditionBuilder<ValuedCondition, u8, ValuedTerm> {
     #[must_use]
     pub fn build(self) -> Condition {
         Condition::Valued {
@@ -361,13 +414,13 @@ impl ConditionBuilder<ValuedCondition,u8,ValuedTerm> {
     }
 }
 
-impl ConditionBuilder<ValuedCondition,u8,Empty> {
+impl ConditionBuilder<ValuedCondition, u8, Empty> {
     #[must_use]
     pub fn build(self) -> Condition {
         Condition::Valued {
             cond: self.cond,
             term: ValuedTerm::default(),
-            level: self.value
+            level: self.value,
         }
     }
 }
