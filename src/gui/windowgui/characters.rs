@@ -1,5 +1,5 @@
 use egui::{Align, ProgressBar, Ui}; use egui_extras::{Column, TableBuilder, TableRow};
-use crate::{character::{Chr, Health}, saver::Saver, tracker::Tracker};
+use crate::{character::{Chr, Health}, conditions::Condition, saver::Saver, tracker::Tracker};
 
 #[derive(Debug, Clone)]
 pub enum Response {
@@ -107,7 +107,7 @@ fn show_conds_col(tracker: &Tracker<impl Saver>, responses: &mut Vec<Response>, 
     row.col(|ui| {
         let mut conditions: Vec<_> = tracker.get_conditions(&character.name).into_iter().map(ToOwned::to_owned).collect();
         conditions.sort();
-        let condition_str = conditions.iter().take(2).map(ToString::to_string).collect::<Vec<_>>().join("\n");
+        let condition_str = conditions.iter().take(2).map(Condition::to_short_string).collect::<Vec<_>>().join("\n");
 
         let conds = if conditions.len() <= 2 {
             ui.add(egui::Label::new(condition_str).halign(Align::Max))
