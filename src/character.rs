@@ -20,7 +20,14 @@ impl Health {
     }
 
     fn damage(&mut self, x: u32) {
-        self.current = self.current.saturating_sub(x);
+        let temp_left= self.temp.checked_sub(x);
+        match temp_left {
+            Some(new_temp) => self.set_temp(new_temp),
+            None => {
+                self.set_current(self.current.saturating_sub(x - self.temp));
+                self.set_temp(0);
+            }
+        };
     }
 
     fn set_temp(&mut self, hp: u32) {
@@ -158,6 +165,8 @@ impl ChrBuilder {
 #[cfg(test)]
 mod tests {
     use std::cmp::Ordering;
+    use crate::character::Health;
+
     use super::Chr;
 
     #[test]
@@ -190,5 +199,42 @@ mod tests {
         let c2 = Chr::builder("b", 10, false).build();
 
         assert_eq!(Ordering::Equal, c1.cmp(&c2));
+    }
+
+    #[test]
+    fn damage_less_than_all() {
+        let mut health = Health::new(100);
+        health.damage(23);
+
+        assert_eq!(77, health.current);
+    }
+
+
+    #[test]
+    fn damage_overkill() {
+        let mut health = Health::new(100);
+        health.damage(101);
+
+        assert_eq!(0, health.current);
+    }
+
+    #[test]
+    fn damage_temp_absorbs_less_than_all() {
+        let mut health = Health::new(100);
+        health.set_temp(20);
+        health.damage(6);
+
+        assert_eq!(100, health.current);
+        assert_eq!(14, health.temp)
+    }
+
+    #[test]
+    fn damage_more_than_temp_rolls_over() {
+        let mut health = Health::new(100);
+        health.set_temp(10);
+        health.damage(12);
+
+        assert_eq!(98, health.current);
+        assert_eq!(0, health.temp);
     }
 }
