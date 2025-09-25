@@ -12,12 +12,13 @@ pub type Damage = u8;
 #[derive(Deserialize, Serialize)]
 pub struct ConditionManager {
     conds: HashSet<(String,Condition)>,
+    new_conds: HashSet<(String,Condition)>,
 }
 
 impl ConditionManager {
     #[must_use]
     pub fn new() -> Self {
-        Self { conds: HashSet::new() }
+        Self { conds: HashSet::new(), new_conds: HashSet::new() }
     }
     pub fn add_condition(&mut self, character: &str, cond: Condition) {
         let exists_ge = self.get_conditions(character)
@@ -30,12 +31,22 @@ impl ConditionManager {
             });
 
         if !exists_ge {
-            self.conds.insert((character.to_string(), cond));
+            self.conds.insert((character.to_string(), cond.clone()));
+            // Since `new_conds` is only needed to avoid
+            // ending `Until` conditions that were added to a
+            // character during their own turn,
+            // we technically only need to add the new conditions
+            // added to the character whose turn it is and not
+            // every new condition. It's not wrong to add every new condition
+            // as long as we only check against those affecting the character
+            // in question, but it's unnecessary to add them all.
+            self.new_conds.insert((character.to_string(), cond));
         }
     }
 
     pub fn start_of_turn(&mut self, character: &str) {
-        self.handle_turn_event(&TurnEvent::StartOfTurn(character.to_string()));
+        self.handle_turn_event(&TurnEvent::StartOfNextTurn(character.to_string()));
+        self.new_conds.clear();
     }
 
     pub fn end_of_turn(&mut self, character: &str) -> Option<Damage> {
@@ -46,7 +57,9 @@ impl ConditionManager {
             })
             .sum();
 
-        self.handle_turn_event(&TurnEvent::EndOfTurn(character.to_string()));
+        self.handle_turn_event(&TurnEvent::EndOfNextTurn(character.to_string()));
+
+        self.new_conds.clear();
 
         match damage {
             0 => None,
@@ -63,7 +76,7 @@ impl ConditionManager {
                 match (affected, cond) {
                     (affected, condition @ Condition::Valued { term: ValuedTerm::For(dur), cond, level }) => {
                         match &event {
-                            TurnEvent::EndOfTurn(c) if c == &affected => {
+                            TurnEvent::EndOfNextTurn(c) if c == &affected => {
                                 match dur.in_turns() {
                                     0 | 1 => None,
                                     n => {
@@ -82,7 +95,7 @@ impl ConditionManager {
                     },
                     (affected, condition @ Condition::NonValued { term: NonValuedTerm::For(dur), cond }) => {
                         match &event {
-                            TurnEvent::EndOfTurn(c) if c == &affected => {
+                            TurnEvent::EndOfNextTurn(c) if c == &affected => {
                                 match dur.in_turns() {
                                     0 | 1 => None,
                                     n => {
@@ -98,8 +111,8 @@ impl ConditionManager {
                             _ => Some((affected, condition))
                         }
                     }
-                    (_, Condition::Valued { term: ValuedTerm::Until(e), .. } |
-                        Condition::NonValued { term: NonValuedTerm::Until(e), .. }) if &e == event => None,
+                    (affected, ref condition @ Condition::Valued { term: ValuedTerm::Until(ref e), .. } |
+                        ref condition @ Condition::NonValued { term: NonValuedTerm::Until(ref e), .. }) if e == event && !self.new_conds.iter().any(|(a, b)| a == &affected && b == condition) => None,
                     (affected, Condition::Valued { term: ValuedTerm::Reduced(e, reduction), level, cond }) if &e == event => {
                         let new_level = level.saturating_sub(reduction);
                         match new_level {
@@ -148,6 +161,128 @@ impl ConditionManager {
             .filter(|(affected, _)| affected == character)
             .map(|(_, cond)| cond)
             .collect()
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::{character::Chr, conditions::{condition_manager::ConditionManager, Condition, NonValuedCondition, NonValuedTerm, TurnEvent}};
+
+    #[test]
+    fn add_conditions_adds_it() {
+        let mut cm = ConditionManager::new();
+
+        let jevil = Chr::builder("Jevil", 24, false).build();
+
+        let jevil_turn_ends = TurnEvent::EndOfNextTurn(jevil.name.clone());
+
+        let dazzled = Condition::builder()
+            .condition(NonValuedCondition::Dazzled)
+            .term(NonValuedTerm::Until(jevil_turn_ends))
+            .build();
+
+        cm.add_condition(&jevil.name, dazzled.clone());
+
+        assert!(cm.get_conditions(&jevil.name).contains(&dazzled));
+    }
+
+    #[test]
+    fn add_condition_doesnt_add_it_to_others() {
+        let mut cm = ConditionManager::new();
+
+        let jevil = Chr::builder("Jevil", 24, false).build();
+        let chris = Chr::builder("Chris", 19, true).build();
+
+        let jevil_turn_ends = TurnEvent::EndOfNextTurn(jevil.name.clone());
+
+        let dazzled = Condition::builder()
+            .condition(NonValuedCondition::Dazzled)
+            .term(NonValuedTerm::Until(jevil_turn_ends))
+            .build();
+
+        cm.add_condition(&jevil.name, dazzled.clone());
+
+        assert!(!cm.get_conditions(&chris.name).contains(&dazzled));
+    }
+
+    #[test]
+    fn until_end_of_next_turn_doesnt_end_if_next_event_is_end_of_turn() {
+        let mut cm = ConditionManager::new();
+
+        let jevil = Chr::builder("Jevil", 24, false).build();
+
+        let jevil_turn_ends = TurnEvent::EndOfNextTurn(jevil.name.clone());
+
+        let dazzled = Condition::builder()
+            .condition(NonValuedCondition::Dazzled)
+            .term(NonValuedTerm::Until(jevil_turn_ends))
+            .build();
+
+        cm.add_condition(&jevil.name, dazzled.clone());
+        cm.end_of_turn(&jevil.name);
+
+        assert!(cm.get_conditions(&jevil.name).contains(&dazzled));
+    }
+
+    #[test]
+    fn until_end_of_next_turn_ends_if_another_event_and_then_end_of_turn() {
+        let mut cm = ConditionManager::new();
+
+        let jevil = Chr::builder("Jevil", 24, false).build();
+
+        let jevil_turn_ends = TurnEvent::EndOfNextTurn(jevil.name.clone());
+
+        let dazzled = Condition::builder()
+            .condition(NonValuedCondition::Dazzled)
+            .term(NonValuedTerm::Until(jevil_turn_ends))
+            .build();
+
+        cm.add_condition(&jevil.name, dazzled.clone());
+        cm.start_of_turn(&jevil.name);
+        cm.end_of_turn(&jevil.name);
+
+        assert!(!cm.get_conditions(&jevil.name).contains(&dazzled));
+    }
+
+    #[test]
+    fn until_end_of_next_turn_doesnt_end_if_end_of_turn_when_affected_is_different() {
+        let mut cm = ConditionManager::new();
+
+        let jevil = Chr::builder("Jevil", 24, false).build();
+        let chris = Chr::builder("Chris", 20, true).build();
+
+        let jevil_turn_ends = TurnEvent::EndOfNextTurn(jevil.name.clone());
+
+        let dazzled = Condition::builder()
+            .condition(NonValuedCondition::Dazzled)
+            .term(NonValuedTerm::Until(jevil_turn_ends))
+            .build();
+
+        cm.add_condition(&chris.name, dazzled.clone());
+        cm.end_of_turn(&jevil.name);
+
+        assert!(cm.get_conditions(&chris.name).contains(&dazzled));
+    }
+
+    #[test]
+    fn until_end_of_next_turn_ends_if_another_event_and_then_end_of_turn_when_affected_is_different() {
+        let mut cm = ConditionManager::new();
+
+        let jevil = Chr::builder("Jevil", 24, false).build();
+        let chris = Chr::builder("Chris", 20, true).build();
+
+        let jevil_turn_ends = TurnEvent::EndOfNextTurn(jevil.name.clone());
+
+        let dazzled = Condition::builder()
+            .condition(NonValuedCondition::Dazzled)
+            .term(NonValuedTerm::Until(jevil_turn_ends))
+            .build();
+
+        cm.add_condition(&chris.name, dazzled.clone());
+        cm.start_of_turn(&jevil.name);
+        cm.end_of_turn(&jevil.name);
+
+        assert!(!cm.get_conditions(&chris.name).contains(&dazzled));
     }
 }
 

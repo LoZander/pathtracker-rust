@@ -67,15 +67,15 @@ impl Display for Condition {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 #[derive(Serialize, Deserialize, Hash)]
 pub enum TurnEvent {
-    StartOfTurn(String),
-    EndOfTurn(String)
+    StartOfNextTurn(String),
+    EndOfNextTurn(String)
 }
 
 impl Display for TurnEvent {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::StartOfTurn(name) => write!(f, "start of {name} turn"),
-            Self::EndOfTurn(name) => write!(f, "end of {name} turn"),
+            Self::StartOfNextTurn(name) => write!(f, "start of next turn of {name}"),
+            Self::EndOfNextTurn(name) => write!(f, "end of next turn of {name}"),
         }
     }
 }
