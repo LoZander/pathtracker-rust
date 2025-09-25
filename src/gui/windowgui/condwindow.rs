@@ -62,16 +62,16 @@ struct Data {
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 enum TurnEventEntry {
-    StartOfTurn,
+    StartOfNextTurn,
     #[default]
-    EndOfTurn,
+    EndOfNextTurn,
 }
 
 impl From<TurnEvent> for TurnEventEntry {
     fn from(value: TurnEvent) -> Self {
         match value {
-            TurnEvent::StartOfTurn(_) => TurnEventEntry::StartOfTurn,
-            TurnEvent::EndOfTurn(_) => TurnEventEntry::EndOfTurn,
+            TurnEvent::StartOfNextTurn(_) => TurnEventEntry::StartOfNextTurn,
+            TurnEvent::EndOfNextTurn(_) => TurnEventEntry::EndOfNextTurn,
         }
     }
 }
@@ -79,8 +79,8 @@ impl From<TurnEvent> for TurnEventEntry {
 impl Display for TurnEventEntry {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            TurnEventEntry::StartOfTurn => write!(f, "start of turn"),
-            TurnEventEntry::EndOfTurn => write!(f, "end of turn"),
+            TurnEventEntry::StartOfNextTurn => write!(f, "start of next turn"),
+            TurnEventEntry::EndOfNextTurn => write!(f, "end of next turn"),
         }
     }
 }
@@ -212,8 +212,8 @@ fn show_add_button(ui: &mut Ui, data: &Data, character: &Chr) -> Option<Response
 
 fn create_turn_event(data: &Data) -> TurnEvent {
     let turn_event = match data.selected_turn_event {
-        TurnEventEntry::StartOfTurn => TurnEvent::StartOfTurn(data.selected_turn_event_character.clone()),
-        TurnEventEntry::EndOfTurn => TurnEvent::EndOfTurn(data.selected_turn_event_character.clone()),
+        TurnEventEntry::StartOfNextTurn => TurnEvent::StartOfNextTurn(data.selected_turn_event_character.clone()),
+        TurnEventEntry::EndOfNextTurn => TurnEvent::EndOfNextTurn(data.selected_turn_event_character.clone()),
     };
     turn_event
 }
@@ -335,14 +335,14 @@ fn show_reduced_options(ui: &mut Ui, data: &mut Data, characters: Vec<Chr>) {
                 .show_ui(ui, |ui| {
                     ui.selectable_value(
                         &mut data.selected_turn_event,
-                        TurnEventEntry::EndOfTurn,
-                        TurnEventEntry::EndOfTurn.to_string(),
+                        TurnEventEntry::EndOfNextTurn,
+                        TurnEventEntry::EndOfNextTurn.to_string(),
                     );
 
                     ui.selectable_value(
                         &mut data.selected_turn_event,
-                        TurnEventEntry::StartOfTurn,
-                        TurnEventEntry::StartOfTurn.to_string(),
+                        TurnEventEntry::StartOfNextTurn,
+                        TurnEventEntry::StartOfNextTurn.to_string(),
                     );
                 });
         });
@@ -376,14 +376,14 @@ fn show_until_options(ui: &mut Ui, data: &mut Data, characters: Vec<Chr>) {
                 .show_ui(ui, |ui| {
                     ui.selectable_value(
                         &mut data.selected_turn_event,
-                        TurnEventEntry::EndOfTurn,
-                        TurnEventEntry::EndOfTurn.to_string(),
+                        TurnEventEntry::EndOfNextTurn,
+                        TurnEventEntry::EndOfNextTurn.to_string(),
                     );
 
                     ui.selectable_value(
                         &mut data.selected_turn_event,
-                        TurnEventEntry::StartOfTurn,
-                        TurnEventEntry::StartOfTurn.to_string(),
+                        TurnEventEntry::StartOfNextTurn,
+                        TurnEventEntry::StartOfNextTurn.to_string(),
                     );
                 });
             ui.label("of");

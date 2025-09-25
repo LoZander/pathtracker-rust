@@ -167,15 +167,15 @@ fn parse_value(n: &str) -> Result<u8> {
 
 fn parse_turn_event(character: String, term_action: &[&str]) -> Result<TurnEvent> {
     match term_action {
-        ["start", "of", "turn"] => Ok(TurnEvent::StartOfTurn(character)),
-        ["end", "of", "turn"] => Ok(TurnEvent::EndOfTurn(character)),
+        ["start", "of", "turn"] => Ok(TurnEvent::StartOfNextTurn(character)),
+        ["end", "of", "turn"] => Ok(TurnEvent::EndOfNextTurn(character)),
         ["start", "of", character @ .., "turn"] => {
             let character = unparse(character);
-            Ok(TurnEvent::StartOfTurn(character))
+            Ok(TurnEvent::StartOfNextTurn(character))
         },
         ["end", "of", character @ .., "turn"] => {
             let character = unparse(character);
-            Ok(TurnEvent::EndOfTurn(character))
+            Ok(TurnEvent::EndOfNextTurn(character))
         },
         s => Err(Error::InvalidSyntax { 
             ty: "turn event", 
@@ -265,7 +265,7 @@ mod tests {
             character: String::from("Alice"),
             cond: Condition::builder()
                 .condition(NonValuedCondition::Dazzled)
-                .term(NonValuedTerm::Until(TurnEvent::EndOfTurn(String::from("Bob"))))
+                .term(NonValuedTerm::Until(TurnEvent::EndOfNextTurn(String::from("Bob"))))
                 .build()
         };
 
@@ -283,7 +283,7 @@ mod tests {
             cond: Condition::builder()
                 .condition(ValuedCondition::Frightened)
                 .value(2)
-                .term(ValuedTerm::Reduced(TurnEvent::EndOfTurn(String::from("Alice")), 1))
+                .term(ValuedTerm::Reduced(TurnEvent::EndOfNextTurn(String::from("Alice")), 1))
                 .build()
         };
 

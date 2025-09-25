@@ -8,7 +8,7 @@ fn add_condition_adds() {
     let condition = Condition::builder()
         .condition(ValuedCondition::Frightened)
         .value(3)
-        .term(ValuedTerm::Reduced(TurnEvent::EndOfTurn(String::from("bob")), 1))
+        .term(ValuedTerm::Reduced(TurnEvent::EndOfNextTurn(String::from("bob")), 1))
         .build();
 
     cm.add_condition("bob", condition.clone());
@@ -22,7 +22,7 @@ fn remove_condition_removes() {
     let condition = Condition::Valued {
         cond: ValuedCondition::Frightened,
         level: 5,
-        term: ValuedTerm::Reduced(TurnEvent::EndOfTurn(String::from("bob")), 1)
+        term: ValuedTerm::Reduced(TurnEvent::EndOfNextTurn(String::from("bob")), 1)
     };
 
     cm.add_condition("bob", condition.clone());
@@ -45,7 +45,7 @@ fn remove_bleed_doesnt_remove_frighten() {
     let frightened = Condition::Valued {
         cond: ValuedCondition::Frightened,
         level: 3,
-        term: ValuedTerm::Reduced(TurnEvent::EndOfTurn(String::from("bob")), 1)
+        term: ValuedTerm::Reduced(TurnEvent::EndOfNextTurn(String::from("bob")), 1)
     };
 
     cm.add_condition("bob", frightened.clone());
@@ -205,7 +205,7 @@ fn persistent_bleed_10_reduced_start_alice_on_bob() -> tracker::Result<()> {
     let bleed = Condition::builder()
         .condition(ValuedCondition::PersistentDamage(DamageType::Bleed))
         .value(10)
-        .term(ValuedTerm::Reduced(TurnEvent::StartOfTurn(String::from("Alice")), 3))
+        .term(ValuedTerm::Reduced(TurnEvent::StartOfNextTurn(String::from("Alice")), 3))
         .build();
     t.add_condition("Bob", bleed)?;
 
