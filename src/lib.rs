@@ -1,5 +1,6 @@
 #![feature(iter_intersperse)]
 #![feature(coverage_attribute)]
+#![feature(proc_macro)]
 
 pub mod tracker;
 pub mod gui;
