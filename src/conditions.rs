@@ -19,6 +19,7 @@ impl Condition {
         ConditionBuilder::default()
     }
 
+    #[must_use]
     pub fn to_long_string(&self) -> String {
         match self {
             Self::Valued { cond, term, level } => format!("{cond} {level} {term}"),
@@ -26,10 +27,11 @@ impl Condition {
         }
     }
 
+    #[must_use]
     pub fn to_short_string(&self) -> String {
         match self {
-            Condition::Valued { cond, term, level } => format!("{cond} {}", term.to_short_string()),
-            Condition::NonValued { cond, term } => format!("{cond} {}", term.to_short_string())
+            Self::Valued { cond, term, level: _ } => format!("{cond} {}", term.to_short_string()),
+            Self::NonValued { cond, term } => format!("{cond} {}", term.to_short_string())
         }
     }
 }
@@ -68,7 +70,8 @@ impl Display for Condition {
 #[derive(Serialize, Deserialize, Hash)]
 pub enum TurnEvent {
     StartOfNextTurn(String),
-    EndOfNextTurn(String)
+    EndOfNextTurn(String),
+    EndOfCurrentTurn(String),
 }
 
 impl Display for TurnEvent {
@@ -76,6 +79,7 @@ impl Display for TurnEvent {
         match self {
             Self::StartOfNextTurn(name) => write!(f, "start of next turn of {name}"),
             Self::EndOfNextTurn(name) => write!(f, "end of next turn of {name}"),
+            Self::EndOfCurrentTurn(name) => write!(f, "end of current turn of {name}"),
         }
     }
 }
@@ -92,6 +96,7 @@ pub enum NonValuedTerm {
 }
 
 impl NonValuedTerm {
+    #[must_use]
     pub fn to_short_string(&self) -> String {
         match self {
             Self::Manual => String::new(),
@@ -100,6 +105,7 @@ impl NonValuedTerm {
         }
     }
 
+    #[must_use]
     pub fn to_long_string(&self) -> String {
         match self {
             Self::Manual => String::new(),
@@ -131,15 +137,17 @@ pub enum ValuedTerm {
 }
 
 impl ValuedTerm {
+    #[must_use] 
     pub fn to_short_string(&self) -> String {
         match self {
-            ValuedTerm::Manual => String::new(),
-            ValuedTerm::For(_) => "for...".into(),
-            ValuedTerm::Until(_) => "until...".into(),
-            ValuedTerm::Reduced(_, _) => "reduced...".into(),
+            Self::Manual => String::new(),
+            Self::For(_) => "for...".into(),
+            Self::Until(_) => "until...".into(),
+            Self::Reduced(_, _) => "reduced...".into(),
         }
     }
 
+    #[must_use]
     pub fn to_long_string(&self) -> String {
         match self {
             Self::Manual => String::new(),
@@ -169,7 +177,7 @@ impl Display for ValuedTerm {
 #[derive(Serialize, Deserialize, Hash)]
 pub enum ValuedCondition {
     PersistentDamage(DamageType),
-    Clumsy,    
+    Clumsy,
     Doomed,
     Drained,
     Dying,
@@ -335,7 +343,6 @@ pub struct ConditionBuilder<Cond = Empty, Value = Empty, Term = Empty> {
 }
 
 impl Default for ConditionBuilder<Empty, Empty, Empty> {
-    #[must_use]
     fn default() -> Self {
         Self { cond: Empty, value: Empty, term: Empty }
     }

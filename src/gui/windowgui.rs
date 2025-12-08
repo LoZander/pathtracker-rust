@@ -56,13 +56,13 @@ impl<S: Saver> eframe::App for WindowApp<S> {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.error_window.show(ctx);
         let res = self.show_main_window(ctx)
-            .and(self.add_window.show(&mut self.tracker, ctx))
-            .and(self.add_cond_window.show(&mut self.tracker, ctx))
-            .and(self.rename_window.show(&mut self.tracker, ctx))
-            .and(self.health_window.show(&mut self.tracker, ctx))
-            .and(self.show_damage_window(ctx))
-            .and(self.show_heal_window(ctx))
-            .and(self.show_add_temp_hp_window(ctx));
+            .and_then(|()| self.add_window.show(&mut self.tracker, ctx))
+            .and_then(|()| self.add_cond_window.show(&mut self.tracker, ctx))
+            .and_then(|()| self.rename_window.show(&mut self.tracker, ctx))
+            .and_then(|()| self.health_window.show(&mut self.tracker, ctx))
+            .and_then(|()| self.show_damage_window(ctx))
+            .and_then(|()| self.show_heal_window(ctx))
+            .and_then(|()| self.show_add_temp_hp_window(ctx));
 
         if let Err(err) = res {
             self.error_window.open(err);
@@ -124,7 +124,7 @@ impl<S: Saver> WindowApp<S> {
     }
 
     fn show_character_panel(&mut self, ctx: &Context) -> Result<()> {
-        let frame = egui::Frame::default().inner_margin(egui::Margin::symmetric(40.0, 20.0));
+        let frame = egui::Frame::default().inner_margin(egui::Margin::symmetric(40, 20));
         egui::CentralPanel::default()
             .frame(frame)
             .show(ctx, |ui| {
