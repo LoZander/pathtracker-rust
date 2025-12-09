@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use egui::{vec2, Context, Ui, WidgetText};
+use egui::{vec2, Context, Ui};
 
 use crate::{
     character::Chr,
@@ -61,17 +61,20 @@ struct Data {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[allow(clippy::enum_variant_names)]
 enum TurnEventEntry {
     StartOfNextTurn,
     #[default]
     EndOfNextTurn,
+    EndOfCurrentTurn,
 }
 
 impl From<TurnEvent> for TurnEventEntry {
     fn from(value: TurnEvent) -> Self {
         match value {
-            TurnEvent::StartOfNextTurn(_) => TurnEventEntry::StartOfNextTurn,
-            TurnEvent::EndOfNextTurn(_) => TurnEventEntry::EndOfNextTurn,
+            TurnEvent::StartOfNextTurn(_) => Self::StartOfNextTurn,
+            TurnEvent::EndOfNextTurn(_) => Self::EndOfNextTurn,
+            TurnEvent::EndOfCurrentTurn(_) => Self::EndOfCurrentTurn,
         }
     }
 }
@@ -79,8 +82,9 @@ impl From<TurnEvent> for TurnEventEntry {
 impl Display for TurnEventEntry {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            TurnEventEntry::StartOfNextTurn => write!(f, "start of next turn"),
-            TurnEventEntry::EndOfNextTurn => write!(f, "end of next turn"),
+            Self::StartOfNextTurn => write!(f, "start of next turn"),
+            Self::EndOfNextTurn => write!(f, "end of next turn"),
+            Self::EndOfCurrentTurn => write!(f, "end of current turn"),
         }
     }
 }
@@ -88,7 +92,7 @@ impl Display for TurnEventEntry {
 impl CondWindow {
     pub fn open(&mut self, character: Chr) {
         self.reset();
-        self.data.selected_turn_event_character = character.name.clone();
+        self.data.selected_turn_event_character.clone_from(&character.name);
         self.data.character = Some(character);
         self.open = true;
     }
@@ -98,8 +102,8 @@ impl CondWindow {
         self.data.selected = ConditionEntry::default();
         self.data.cond_value = 0;
         self.data.auto_tracking = false;
-        self.data.selected_nonvalued_term = Default::default();
-        self.data.selected_valued_term = Default::default();
+        self.data.selected_nonvalued_term = NonValuedTermEntry::default();
+        self.data.selected_valued_term = ValuedTermEntry::default();
         self.data.term_rounds = 0;
         self.data.selected_turn_event_character = String::new();
     }
@@ -138,7 +142,7 @@ impl CondWindow {
                                 tracker.add_condition(&character, cond)?;
                             }
                             Response::RemoveCondition { character, cond } => {
-                                tracker.rm_condition(&character, &cond)
+                                tracker.rm_condition(&character, &cond);
                             }
                         }
                     }
@@ -202,7 +206,7 @@ fn show_add_button(ui: &mut Ui, data: &Data, character: &Chr) -> Option<Response
         };
 
         Some(Response::AddCondition {
-            character: character.name.to_string(),
+            character: character.name.clone(),
             cond: condition,
         })
     } else {
@@ -211,11 +215,11 @@ fn show_add_button(ui: &mut Ui, data: &Data, character: &Chr) -> Option<Response
 }
 
 fn create_turn_event(data: &Data) -> TurnEvent {
-    let turn_event = match data.selected_turn_event {
+    match data.selected_turn_event {
         TurnEventEntry::StartOfNextTurn => TurnEvent::StartOfNextTurn(data.selected_turn_event_character.clone()),
         TurnEventEntry::EndOfNextTurn => TurnEvent::EndOfNextTurn(data.selected_turn_event_character.clone()),
-    };
-    turn_event
+        TurnEventEntry::EndOfCurrentTurn => TurnEvent::EndOfCurrentTurn(data.selected_turn_event_character.clone())
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -228,8 +232,8 @@ enum NonValuedTermEntry {
 impl Display for NonValuedTermEntry {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            NonValuedTermEntry::For => write!(f, "For"),
-            NonValuedTermEntry::Until => write!(f, "Until"),
+            Self::For => write!(f, "For"),
+            Self::Until => write!(f, "Until"),
         }
     }
 }
@@ -245,9 +249,9 @@ enum ValuedTermEntry {
 impl Display for ValuedTermEntry {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ValuedTermEntry::For => write!(f, "For"),
-            ValuedTermEntry::Until => write!(f, "Until"),
-            ValuedTermEntry::Reduced => write!(f, "Reduced"),
+            Self::For => write!(f, "For"),
+            Self::Until => write!(f, "Until"),
+            Self::Reduced => write!(f, "Reduced"),
         }
     }
 }
@@ -261,17 +265,17 @@ enum TermEntry {
 impl Display for TermEntry {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            TermEntry::NonValuedTermEntry(non_valued_term_entry) => {
+            Self::NonValuedTermEntry(non_valued_term_entry) => {
                 write!(f, "{non_valued_term_entry}")
             }
-            TermEntry::ValuedTermEntry(valued_term_entry) => write!(f, "{valued_term_entry}"),
+            Self::ValuedTermEntry(valued_term_entry) => write!(f, "{valued_term_entry}"),
         }
     }
 }
 
 impl Default for TermEntry {
     fn default() -> Self {
-        Self::NonValuedTermEntry(Default::default())
+        Self::NonValuedTermEntry(NonValuedTermEntry::default())
     }
 }
 
@@ -316,9 +320,36 @@ fn show_auto_tracking_options(ui: &mut Ui, data: &mut Data, character: &Chr, cha
                 NonValuedTermEntry::For => show_for_options(ui, data),
                 NonValuedTermEntry::Until => show_until_options(ui, data, characters)
             },
-        };
+        }
     });
 }
+
+fn show_turn_event_options(ui: &mut Ui, data: &mut Data) {
+    egui::ComboBox::from_id_salt("turn event")
+        .width(30.)
+        .selected_text(data.selected_turn_event.to_string())
+        .show_ui(ui, |ui| {
+            ui.selectable_value(
+                &mut data.selected_turn_event,
+                TurnEventEntry::EndOfNextTurn,
+                TurnEventEntry::EndOfNextTurn.to_string(),
+            );
+
+            ui.selectable_value(
+                &mut data.selected_turn_event,
+                TurnEventEntry::EndOfCurrentTurn,
+                TurnEventEntry::EndOfCurrentTurn.to_string(),
+            );
+
+            ui.selectable_value(
+                &mut data.selected_turn_event,
+                TurnEventEntry::StartOfNextTurn,
+                TurnEventEntry::StartOfNextTurn.to_string(),
+            );
+
+        });
+}
+
 
 fn show_reduced_options(ui: &mut Ui, data: &mut Data, characters: Vec<Chr>) {
     ui.vertical(|ui| {
@@ -329,35 +360,20 @@ fn show_reduced_options(ui: &mut Ui, data: &mut Data, characters: Vec<Chr>) {
         });
         ui.horizontal(|ui| {
             ui.label("at");
-            egui::ComboBox::from_id_salt("turn event")
-                .width(30.)
-                .selected_text(data.selected_turn_event.to_string())
-                .show_ui(ui, |ui| {
-                    ui.selectable_value(
-                        &mut data.selected_turn_event,
-                        TurnEventEntry::EndOfNextTurn,
-                        TurnEventEntry::EndOfNextTurn.to_string(),
-                    );
-
-                    ui.selectable_value(
-                        &mut data.selected_turn_event,
-                        TurnEventEntry::StartOfNextTurn,
-                        TurnEventEntry::StartOfNextTurn.to_string(),
-                    );
-                });
+            show_turn_event_options(ui, data);
         });
 
         egui::ComboBox::from_id_salt("turn event character")
             .width(30.)
             .selected_text(data.selected_turn_event_character.clone())
             .show_ui(ui, |ui| {
-                characters.into_iter().for_each(|c| {
+                for c in characters {
                     ui.selectable_value(
                         &mut data.selected_turn_event_character,
                         c.name.clone(),
                         c.name,
                     );
-                })
+                }
             });
     });
 }
@@ -370,22 +386,7 @@ fn show_for_options(ui: &mut Ui, data: &mut Data) {
 fn show_until_options(ui: &mut Ui, data: &mut Data, characters: Vec<Chr>) {
     ui.vertical(|ui| {
         ui.horizontal(|ui| {
-            egui::ComboBox::from_id_salt("turn event")
-                .width(30.)
-                .selected_text(data.selected_turn_event.to_string())
-                .show_ui(ui, |ui| {
-                    ui.selectable_value(
-                        &mut data.selected_turn_event,
-                        TurnEventEntry::EndOfNextTurn,
-                        TurnEventEntry::EndOfNextTurn.to_string(),
-                    );
-
-                    ui.selectable_value(
-                        &mut data.selected_turn_event,
-                        TurnEventEntry::StartOfNextTurn,
-                        TurnEventEntry::StartOfNextTurn.to_string(),
-                    );
-                });
+            show_turn_event_options(ui, data);
             ui.label("of");
         });
 
@@ -393,25 +394,23 @@ fn show_until_options(ui: &mut Ui, data: &mut Data, characters: Vec<Chr>) {
             .width(30.)
             .selected_text(data.selected_turn_event_character.clone())
             .show_ui(ui, |ui| {
-                characters.into_iter().for_each(|c| {
+                for c in characters {
                     ui.selectable_value(
                         &mut data.selected_turn_event_character,
                         c.name.clone(),
                         c.name,
                     );
-                })
+                }
             });
     });
 }
 
 impl Data {
     fn selected_term_string(&self) -> String {
-        let selected = match self.selected {
+        match self.selected {
             ConditionEntry::Valued(_) => self.selected_valued_term.to_string(),
             ConditionEntry::NonValued(_) => self.selected_nonvalued_term.to_string(),
-        };
-
-        selected
+        }
     }
 }
 
@@ -551,7 +550,7 @@ fn show_cond_list_section(
                 })
                 .map(|removed| Response::RemoveCondition {
                     cond: removed.clone(),
-                    character: character.name.to_string(),
+                    character: character.name.clone(),
                 })
                 .collect()
         })

@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use thiserror::Error;
 
-use crate::{character::{Chr, Health}, conditions::{condition_manager::ConditionManager, Condition}, saver::{self, Saver}};
+use crate::{character::Chr, conditions::{condition_manager::ConditionManager, Condition}, saver::{self, Saver}};
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -266,7 +266,7 @@ impl<S: Saver> Tracker<S> {
     pub fn rm_chr(&mut self, name: &str) -> Result<()> {
         let rm_index = self.chrs.iter()
             .position(|chr| chr.name == name)
-            .ok_or(Error::RmNoneError(name.to_string()))?;
+            .ok_or_else(|| Error::RmNoneError(name.to_string()))?;
 
         let removed = self.chrs.remove(rm_index);
 
@@ -410,12 +410,12 @@ impl<S: Saver> Tracker<S> {
     fn change<F>(&mut self, name: &str, f: F) -> Result<Option<MovedStatus>> where
         F: FnOnce(&mut Chr)
     {
-        let before = self.pos(name).ok_or(Error::ChangeNoneError(name.into()))?;
+        let before = self.pos(name).ok_or_else(|| Error::ChangeNoneError(name.into()))?;
         let in_turn = self.in_turn_index;
 
         self.unchecked_change(name, f)?;
 
-        let after = self.pos(name).ok_or(Error::ChangeNoneError(name.into()))?;
+        let after = self.pos(name).ok_or_else(|| Error::ChangeNoneError(name.into()))?;
 
         if let Some(in_turn) = in_turn {
             if before == in_turn && after < in_turn {

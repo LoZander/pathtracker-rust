@@ -221,3 +221,115 @@ fn persistent_bleed_10_reduced_start_alice_on_bob() -> tracker::Result<()> {
 
     Ok(())
 }
+
+#[test]
+fn flat_footed_until_end_of_current_turn_ends_with_current_turn() {
+    let mut conds = ConditionManager::new();
+    let cond = Condition::builder().condition(NonValuedCondition::FlatFooted)
+        .term(NonValuedTerm::Until(TurnEvent::EndOfCurrentTurn(String::from("Alice"))))
+        .build();
+    conds.add_condition("Alice", cond.clone());
+
+    assert!(conds.get_conditions("Alice").contains(&cond));
+    conds.end_of_turn("Alice");
+
+    assert!(!conds.get_conditions("Alice").contains(&cond));
+}
+
+#[test]
+fn clumsy_reduced_one_end_of_current_turn_is_reduced() {
+    let mut conds = ConditionManager::new();
+    let cond = Condition::builder().condition(ValuedCondition::Clumsy)
+        .value(3)
+        .term(ValuedTerm::Reduced(TurnEvent::EndOfCurrentTurn(String::from("Alice")), 1))
+        .build();
+    conds.add_condition("Alice", cond.clone());
+
+    match conds.get_conditions("Alice").get(&cond) {
+        Some(&c @ Condition::Valued{level, ..}) if c == &cond =>
+            assert_eq!(3, *level),
+        _ => panic!()
+    }
+
+    conds.end_of_turn("Alice");
+
+    match conds.get_conditions("Alice").get(&cond) {
+        Some(&c @ Condition::Valued{level, ..}) if c == &cond =>
+            assert_eq!(2, *level),
+        _ => panic!()
+    }
+}
+
+#[test]
+fn flat_footed_until_end_of_next_turn_doesnt_end_with_current() {
+    let mut conds = ConditionManager::new();
+    let cond = Condition::builder().condition(NonValuedCondition::FlatFooted)
+        .term(NonValuedTerm::Until(TurnEvent::EndOfNextTurn(String::from("Alice"))))
+        .build();
+    conds.add_condition("Alice", cond.clone());
+
+    assert!(conds.get_conditions("Alice").contains(&cond));
+
+    conds.end_of_turn("Alice");
+
+    assert!(conds.get_conditions("Alice").contains(&cond));
+}
+
+#[test]
+fn flat_footed_until_end_of_next_turn_ends_after_it_end_of_other_turn_and_then_affecteds() {
+    let mut conds = ConditionManager::new();
+    let cond = Condition::builder().condition(NonValuedCondition::FlatFooted)
+        .term(NonValuedTerm::Until(TurnEvent::EndOfNextTurn(String::from("Alice"))))
+        .build();
+    conds.add_condition("Alice", cond.clone());
+
+    assert!(conds.get_conditions("Alice").contains(&cond));
+
+    conds.end_of_turn("Bob");
+    conds.end_of_turn("Alice");
+
+    assert!(!conds.get_conditions("Alice").contains(&cond));
+}
+
+#[test]
+fn clumsy_reduced_end_of_next_turn_doesnt_reduce_after_end_of_current() {
+    let mut conds = ConditionManager::new();
+    let cond = Condition::builder().condition(ValuedCondition::Clumsy)
+        .value(3)
+        .term(ValuedTerm::Reduced(TurnEvent::EndOfNextTurn(String::from("Alice")), 1))
+        .build();
+    conds.add_condition("Alice", cond.clone());
+
+    match conds.get_conditions("Alice").get(&cond) {
+        Some(&c @ Condition::Valued{level, ..}) if c == &cond =>
+            assert_eq!(3, *level),
+        _ => panic!()
+    }
+
+    conds.end_of_turn("Alice");
+
+    match conds.get_conditions("Alice").get(&cond) {
+        Some(&c @ Condition::Valued{level, ..}) if c == &cond =>
+            assert_eq!(3, *level),
+        _ => panic!()
+    }
+}
+
+#[test]
+fn clumsy_reduced_end_of_next_turn_reduces_after_end_of_other_turn_and_then_affecteds() {
+    let mut conds = ConditionManager::new();
+    let cond = Condition::builder().condition(ValuedCondition::Clumsy)
+        .value(3)
+        .term(ValuedTerm::Reduced(TurnEvent::EndOfNextTurn(String::from("Alice")), 1))
+        .build();
+    conds.add_condition("Alice", cond.clone());
+
+    conds.end_of_turn("Bob");
+    conds.end_of_turn("Alice");
+
+    match conds.get_conditions("Alice").get(&cond) {
+        Some(&c @ Condition::Valued{level, ..}) if c == &cond =>
+            assert_eq!(2, *level),
+        _ => panic!()
+    }
+}

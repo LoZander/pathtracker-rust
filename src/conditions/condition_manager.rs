@@ -57,6 +57,7 @@ impl ConditionManager {
             })
             .sum();
 
+        self.handle_turn_event(&TurnEvent::EndOfCurrentTurn(character.to_string()));
         self.handle_turn_event(&TurnEvent::EndOfNextTurn(character.to_string()));
 
         self.new_conds.clear();
@@ -111,9 +112,31 @@ impl ConditionManager {
                             _ => Some((affected, condition))
                         }
                     }
-                    (affected, ref condition @ Condition::Valued { term: ValuedTerm::Until(ref e), .. } |
-                        ref condition @ Condition::NonValued { term: NonValuedTerm::Until(ref e), .. }) if e == event && !self.new_conds.iter().any(|(a, b)| a == &affected && b == condition) => None,
-                    (affected, Condition::Valued { term: ValuedTerm::Reduced(e, reduction), level, cond }) if &e == event => {
+                    (affected, ref condition @ 
+                        (Condition::Valued { term: ValuedTerm::Until(ref e @ TurnEvent::EndOfCurrentTurn(_)), .. } |
+                        Condition::NonValued { term: NonValuedTerm::Until(ref e @ TurnEvent::EndOfCurrentTurn(_)), .. }))
+                    if e == event => None,
+                    (affected, ref condition @
+                        (Condition::Valued { term: ValuedTerm::Until(ref e), .. } |
+                        Condition::NonValued { term: NonValuedTerm::Until(ref e), .. }))
+                    if e == event && self.has_new_condition_on(&affected, condition) => None,
+                    (affected, Condition::Valued { term: ValuedTerm::Reduced(e @ TurnEvent::EndOfCurrentTurn(_), reduction), level, cond })
+                    if &e == event => {
+                        let new_level = level.saturating_sub(reduction);
+                        match new_level {
+                            0 => None,
+                            level => {
+                                let new_cond = Condition::Valued { 
+                                    cond, 
+                                    term: ValuedTerm::Reduced(e, reduction), 
+                                    level 
+                                };
+                                Some((affected, new_cond))
+                            }
+                        }
+                    },
+                    (affected, Condition::Valued { term: ValuedTerm::Reduced(e, reduction), level, cond })
+                    if &e == event && self.has_new_condition_on(&affected, &Condition::Valued { term: ValuedTerm::Reduced(e.clone(), reduction), level, cond }) => {
                         let new_level = level.saturating_sub(reduction);
                         match new_level {
                             0 => None,
@@ -132,6 +155,10 @@ impl ConditionManager {
             })
             .collect();
         self.conds = new_conds;
+    }
+
+    fn has_new_condition_on(&self, affected: &str, condition: &Condition) -> bool {
+        !self.new_conds.iter().any(|(a, b)| a == affected && b == condition)
     }
 
     pub fn remove_condition(&mut self, character: &str, condition: &Condition) {
