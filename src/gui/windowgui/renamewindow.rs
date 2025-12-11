@@ -1,13 +1,13 @@
 use egui::Context;
 
-use crate::{character::Chr, saver::Saver, tracker::Tracker};
+use crate::{character::{Chr, ChrName}, saver::Saver, tracker::Tracker};
 
 use super::Confirmation;
 
 #[derive(Debug, Clone)]
 #[derive(Default)]
 pub struct RenameWindow {
-    character: Option<Chr>,
+    character: Option<ChrName>,
     new_name: String,
     show: bool,
     focus: bool
@@ -19,8 +19,8 @@ impl RenameWindow {
         self.new_name = String::new();
     }
 
-    pub fn open(&mut self, character: Chr) {
-        self.new_name = character.name.to_string();
+    pub fn open(&mut self, character: ChrName) {
+        self.new_name = character.to_string();
         self.character = Some(character);
         self.show = true;
         self.focus = true;
@@ -48,7 +48,7 @@ impl RenameWindow {
             match confirmation {
                 Some(Confirmation::Confirm) => {
                     if let Some(character) = &self.character {
-                        tracker.rename(&character.name, self.new_name.clone())?;
+                        tracker.rename(character, self.new_name.clone())?;
                         // if let Err(err) = tracker.rename(&character.name, self.new_name.clone()) {
                             
                         //     super::error_window(ctx, "Error", err.to_string());

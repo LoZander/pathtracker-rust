@@ -1,6 +1,8 @@
 use anymap2::AnyMap;
 use thiserror::Error;
 
+use crate::character::ChrName;
+
 use super::{Command, Topic};
 
 mod condition_parser;
@@ -64,7 +66,7 @@ pub fn parse_input(input: &str) -> ParseResult {
         command_strs::ADD => match args {
             [init, name @ ..] => {
                 let init: i32 = init.parse().map_err(|err| Error::ParseInt { arg: (*init).to_string(), source: err })?;
-                let name = unparse(name);
+                let name = ChrName::new(unparse(name));
 
                 let mut map = AnyMap::new();
 
@@ -73,18 +75,18 @@ pub fn parse_input(input: &str) -> ParseResult {
                 }
 
                 Ok(Command::AddChr { 
-                    name, 
-                    init,  
+                    name,
+                    init,
                     player: map.get::<PlayerArg>().is_some_and(|x| x.0), 
                     health: map.get::<HealthArg>().map(|x| x.0)
                 })
             },
             _ => Err(Error::InvalidNumberOfArgs(args.len(), "add".into())) },
         command_strs::REMOVE => {
-            let name = args.iter().intersperse(&" ").fold(String::new(), |x, y| x + y);
+            let name = ChrName::new(args.iter().intersperse(&" ").fold(String::new(), |x, y| x + y));
             Ok(Command::RmChr { name }) }
         command_strs::MODIFY => {
-            let name = args.iter().intersperse(&" ").fold(String::new(), |x, y| x + y);
+            let name = ChrName::new(args.iter().intersperse(&" ").fold(String::new(), |x, y| x + y));
 
             let mut map = AnyMap::new();
 

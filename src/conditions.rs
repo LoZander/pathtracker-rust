@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::{fmt::Display, hash::Hash};
 
-use crate::duration::Duration;
+use crate::{character::ChrName, duration::Duration};
 
 pub mod condition_manager;
 
@@ -69,9 +69,9 @@ impl Display for Condition {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 #[derive(Serialize, Deserialize, Hash)]
 pub enum TurnEvent {
-    StartOfNextTurn(String),
-    EndOfNextTurn(String),
-    EndOfCurrentTurn(String),
+    StartOfNextTurn(ChrName),
+    EndOfNextTurn(ChrName),
+    EndOfCurrentTurn(ChrName),
 }
 
 impl Display for TurnEvent {

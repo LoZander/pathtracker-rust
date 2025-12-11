@@ -1,4 +1,5 @@
 use thiserror::Error;
+use crate::character::ChrName;
 use crate::conditions::{Condition, NonValuedTerm, TurnEvent, ValuedTerm};
 use crate::duration::Duration;
 use super::Command;
@@ -47,7 +48,8 @@ pub fn parse(args: &[&str]) -> Result<Command> {
         Some(&"add") => {
             let split: Vec<_> = args.split(|s| s == &"on").collect();
             let cond_args = split.first().expect("Internal error: illegal state reached due to internal logical error");
-            let character = unparse(split.get(1).ok_or(Error::MissingChr)?);
+            let character_str = unparse(split.get(1).ok_or(Error::MissingChr)?);
+            let character = ChrName::new(character_str);
 
             match &cond_args.get(1..) {
                 Some([cond_name, value]) => {
@@ -96,9 +98,9 @@ pub fn parse(args: &[&str]) -> Result<Command> {
                     nonvalued_conditions::parse(cond)
                         .map(|cond| Condition::builder().condition(cond).build())
                         .or_else(|_| valued_conditions::parse(cond).map(|cond| Condition::builder().condition(cond).value(1).build()))
-                        .map(|cond| Command::RmCond { cond, character: unparse(character) })
+                        .map(|cond| Command::RmCond { cond, character: ChrName::new(unparse(character)) })
                 },
-                Some(s) => Err(Error::InvalidSyntax { 
+                Some(s) => Err(Error::InvalidSyntax {
                     ty: "condition",
                     expected: "cond rm <condition> from <character>", 
                     actual: s.iter().intersperse(&" ").fold(String::from("cond "), |acc, x| acc + x)
@@ -120,7 +122,7 @@ pub fn parse(args: &[&str]) -> Result<Command> {
     }
 }
 
-fn parse_nonvalued_term(character: String, term_type: &str, term_action: &[&str]) -> Result<NonValuedTerm> {
+fn parse_nonvalued_term(character: ChrName, term_type: &str, term_action: &[&str]) -> Result<NonValuedTerm> {
     match term_type {
         "for" => parse_duration(term_action).map(NonValuedTerm::For),
         "until" => parse_turn_event(character, term_action).map(NonValuedTerm::Until),
@@ -132,7 +134,7 @@ fn parse_nonvalued_term(character: String, term_type: &str, term_action: &[&str]
     }
 }
 
-fn parse_valued_term(character: String, term_type: &str, term_action: &[&str]) -> Result<ValuedTerm> {
+fn parse_valued_term(character: ChrName, term_type: &str, term_action: &[&str]) -> Result<ValuedTerm> {
     match term_type {
         "for" => parse_duration(term_action).map(ValuedTerm::For),
         "until" => parse_turn_event(character, term_action).map(ValuedTerm::Until),
@@ -165,16 +167,16 @@ fn parse_value(n: &str) -> Result<u8> {
     })
 }
 
-fn parse_turn_event(character: String, term_action: &[&str]) -> Result<TurnEvent> {
+fn parse_turn_event(character: ChrName, term_action: &[&str]) -> Result<TurnEvent> {
     match term_action {
         ["start", "of", "turn"] => Ok(TurnEvent::StartOfNextTurn(character)),
         ["end", "of", "turn"] => Ok(TurnEvent::EndOfNextTurn(character)),
-        ["start", "of", character @ .., "turn"] => {
-            let character = unparse(character);
+        ["start", "of", character_str @ .., "turn"] => {
+            let character = ChrName::new(unparse(character_str));
             Ok(TurnEvent::StartOfNextTurn(character))
         },
-        ["end", "of", character @ .., "turn"] => {
-            let character = unparse(character);
+        ["end", "of", character_str @ .., "turn"] => {
+            let character = ChrName::new(unparse(character_str));
             Ok(TurnEvent::EndOfNextTurn(character))
         },
         s => Err(Error::InvalidSyntax { 
@@ -217,6 +219,7 @@ fn parse_duration(term_action: &[&str]) -> Result<Duration> {
 
 #[cfg(test)]
 mod tests {
+    use crate::character::ChrName;
     use crate::duration::Duration;
     use crate::gui::terminalgui::Command;
     use crate::conditions::{Condition, DamageType, NonValuedCondition, NonValuedTerm, TurnEvent, ValuedCondition, ValuedTerm};
@@ -229,7 +232,7 @@ mod tests {
         let input = ["add",nv_conds::BLINDED,"on","Alice"];
         let command = parse(&input)?;
         let expected = Command::AddCond {
-            character: String::from("Alice"),
+            character: ChrName::new(String::from("Alice")),
             cond: Condition::builder()
                 .condition(NonValuedCondition::Blinded)
                 .build()
@@ -245,7 +248,7 @@ mod tests {
         let input = ["add",v_conds::PERSISTENT_BLEED,"5","on","Bob"];
         let command = parse(&input)?;
         let expected = Command::AddCond {
-            character: String::from("Bob"),
+            character: ChrName::new(String::from("Bob")),
             cond: Condition::builder()
                 .condition(ValuedCondition::PersistentDamage(DamageType::Bleed))
                 .value(5)
@@ -262,10 +265,10 @@ mod tests {
         let input = ["add",nv_conds::DAZZLED,"until","end","of","Bob","turn","on","Alice"];
         let command = parse(&input)?;
         let expected = Command::AddCond {
-            character: String::from("Alice"),
+            character: ChrName::new(String::from("Alice")),
             cond: Condition::builder()
                 .condition(NonValuedCondition::Dazzled)
-                .term(NonValuedTerm::Until(TurnEvent::EndOfNextTurn(String::from("Bob"))))
+                .term(NonValuedTerm::Until(TurnEvent::EndOfNextTurn(ChrName::new(String::from("Bob")))))
                 .build()
         };
 
@@ -279,11 +282,11 @@ mod tests {
         let input = ["add",v_conds::FRIGHTENED,"2","reduced","by","1","end","of","Alice","turn","on","Alice"];
         let command = parse(&input)?;
         let expected = Command::AddCond {
-            character: String::from("Alice"),
+            character: ChrName::new(String::from("Alice")),
             cond: Condition::builder()
                 .condition(ValuedCondition::Frightened)
                 .value(2)
-                .term(ValuedTerm::Reduced(TurnEvent::EndOfNextTurn(String::from("Alice")), 1))
+                .term(ValuedTerm::Reduced(TurnEvent::EndOfNextTurn(ChrName::new(String::from("Alice"))), 1))
                 .build()
         };
 
@@ -297,7 +300,7 @@ mod tests {
         let input = ["add",v_conds::DRAINED,"2","for","12","hours","on","Alice"];
         let command = parse(&input)?;
         let expected = Command::AddCond {
-            character: String::from("Alice"),
+            character: ChrName::new(String::from("Alice")),
             cond: Condition::builder()
                 .condition(ValuedCondition::Drained)
                 .value(2)
@@ -315,7 +318,7 @@ mod tests {
         let input = ["add",nv_conds::BLINDED,"for","8","hours","on","Bob"];
         let command = parse(&input)?;
         let expected = Command::AddCond {
-            character: String::from("Bob"),
+            character: ChrName::new(String::from("Bob")),
             cond: Condition::builder()
                 .condition(NonValuedCondition::Blinded)
                 .term(NonValuedTerm::For(Duration::from_hours(8)))

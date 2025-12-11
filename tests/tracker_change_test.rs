@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used)]
 
 use pathtracker_rust::{
-	character::Chr, saver::NoSaver, tracker::{self, MovedStatus, Tracker}
+	character::{Chr, ChrName}, saver::NoSaver, tracker::{self, MovedStatus, Tracker}
 };
 
 #[test]
@@ -10,9 +10,11 @@ fn rename_renames() -> tracker::Result<()> {
         Chr::builder("Link", 24, true).build(),
     ]).build();
 
-    t.rename("Link", "Ganon")?;
+    let link = ChrName::new("Link");
 
-    assert_eq!(Some(&Chr::builder("Ganon", 24, true).build()), t.get_chr("Ganon"));
+    t.rename(&link, "Ganon")?;
+
+    assert_eq!(Some(&Chr::builder("Ganon", 24, true).build()), t.get_chr(&ChrName::new("Ganon")));
 
     Ok(())
 }
@@ -24,8 +26,10 @@ fn rename_into_already_existing_fails() {
         Chr::builder("Ganon", 30, false).build(),
     ]).build();
 
-    let res = t.rename("Link", "Ganon");
-    assert_eq!(Err(tracker::Error::RenameDupError{ old: "Link".into(), new: "Ganon".into() }), res);
+    let link = ChrName::new("Link");
+
+    let res = t.rename(&link, "Ganon");
+    assert_eq!(Err(tracker::Error::RenameDupError{ old: link.clone(), new: "Ganon".into() }), res);
 }
 
 #[test]
@@ -36,7 +40,9 @@ fn rename_preserves_order() -> tracker::Result<()> {
         Chr::builder("Lament", 24, true).build(),
     ]).build();
 
-    t.rename("Link", "Ganon")?;
+    let link = ChrName::new("Link");
+
+    t.rename(&link, "Ganon")?;
     assert_eq!(Ok(Some(&Chr::builder("Lucifer", 24, true).build())), t.end_turn());
     assert_eq!(Ok(Some(&Chr::builder("Ganon", 24, true).build())), t.end_turn());
     assert_eq!(Ok(Some(&Chr::builder("Lament", 24, true).build())), t.end_turn());
@@ -56,9 +62,11 @@ fn change_init_changes_init() -> tracker::Result<()> {
         hugo,
     ]).build();
 
-    t.change_init("Hugo", 14)?;
+    let hugo = ChrName::new("Hugo");
 
-    assert_eq!(14, t.get_chr("Hugo").unwrap().init);
+    t.change_init(&hugo, 14)?;
+
+    assert_eq!(14, t.get_chr(&hugo).unwrap().init);
 
     Ok(())
 }
@@ -75,7 +83,9 @@ fn change_init_preserves_sorting() -> tracker::Result<()> {
         hugo,
     ]).build();
 
-    t.change_init("Lucifer", 19)?;
+    let lucifer = ChrName::new("Lucifer");
+
+    t.change_init(&lucifer, 19)?;
 
     assert_eq!("Link", t.end_turn()?.unwrap().name);
     assert_eq!("Lucifer", t.end_turn()?.unwrap().name);
@@ -96,8 +106,10 @@ fn change_init_not_in_turn_preserves_in_turn() -> tracker::Result<()> {
         hugo,
     ]).build();
 
+    let link = ChrName::new("Link");
+
     t.end_turn()?;
-    t.change_init("Link", 25)?;
+    t.change_init(&link, 25)?;
 
     assert_eq!(Some(&lucifer), t.get_in_turn());
 
@@ -120,7 +132,8 @@ fn change_init_not_in_turn_so_skipped_preserves_in_turn() -> tracker::Result<()>
     t.end_turn()?;
 
     assert_eq!("Link", t.get_in_turn().unwrap().name);
-    t.change_init("Hugo", 22)?;
+    let hugo = ChrName::new("Hugo");
+    t.change_init(&hugo, 22)?;
     assert_eq!("Link", t.get_in_turn().unwrap().name);
 
     Ok(())
@@ -142,7 +155,8 @@ fn change_init_not_in_turn_so_two_turns_preserves_in_turn() -> tracker::Result<(
     t.end_turn()?;
 
     assert_eq!("Link", t.get_in_turn().unwrap().name);
-    t.change_init("Lucifer", 5)?;
+    let lucifer = ChrName::new("Lucifer");
+    t.change_init(&lucifer, 5)?;
     assert_eq!("Link", t.get_in_turn().unwrap().name);
 
     Ok(())
@@ -163,7 +177,8 @@ fn change_init_not_in_turn_so_skipped_returns_skipped() -> tracker::Result<()> {
     t.end_turn()?;
     t.end_turn()?;
 
-    let skipped = t.change_init("Hugo", 22)?;
+    let hugo_name = ChrName::new("Hugo");
+    let skipped = t.change_init(&hugo_name, 22)?;
 
     assert_eq!(Some(MovedStatus::Skipped(Chr::builder("Hugo", 22, true).build())), skipped);
 
@@ -185,7 +200,8 @@ fn change_init_not_in_turn_so_two_turns_returns_two_turns() -> tracker::Result<(
     t.end_turn()?;
     t.end_turn()?;
 
-    let skipped = t.change_init("Lucifer", 7)?;
+    let lucifer = ChrName::new("Lucifer");
+    let skipped = t.change_init(&lucifer, 7)?;
 
     assert_eq!(Some(MovedStatus::TwoTurns(Chr::builder("Lucifer", 7, true).build())), skipped);
 
@@ -208,7 +224,8 @@ fn change_init_in_turn_wheearlier_order_changes_in_turn() -> tracker::Result<()>
     t.end_turn()?;
     
     assert_eq!("Link", t.get_in_turn().unwrap().name);
-    t.change_init("Link", 30)?;
+    let link = ChrName::new("Link");
+    t.change_init(&link, 30)?;
     assert_eq!("Lucifer", t.get_in_turn().unwrap().name);
 
     Ok(())
@@ -230,7 +247,8 @@ fn change_init_in_turn_when_earlier_order_changes_in_turn() -> tracker::Result<(
     t.end_turn()?;
 
     assert_eq!("Link", t.get_in_turn().unwrap().name);
-    t.change_init("Link", 8)?;
+    let link = ChrName::new("Link");
+    t.change_init(&link, 8)?;
     assert_eq!("Hugo", t.get_in_turn().unwrap().name);    
 
     Ok(())
@@ -242,9 +260,10 @@ fn set_player_can_make_player() -> tracker::Result<()> {
 
     let mut t: Tracker<NoSaver> = Tracker::builder().with_chrs(vec![barbosa]).build();
 
-    assert!(t.get_chr("Barbosa").is_some_and(|c| c.player));
-    t.set_player("Barbosa", false)?;
-    assert!(!t.get_chr("Barbosa").is_some_and(|c| c.player));
+    let barbosa = ChrName::new("Barbosa");
+    assert!(t.get_chr(&barbosa).is_some_and(|c| c.player));
+    t.set_player(&barbosa, false)?;
+    assert!(!t.get_chr(&barbosa).is_some_and(|c| c.player));
 
     Ok(())
 }
@@ -255,9 +274,10 @@ fn set_player_can_make_enemy() -> tracker::Result<()> {
 
     let mut t: Tracker<NoSaver> = Tracker::builder().with_chrs(vec![barbosa]).build();
 
-    assert!(!t.get_chr("Barbosa").is_some_and(|c| c.player));
-    t.set_player("Barbosa", true)?;
-    assert!(t.get_chr("Barbosa").is_some_and(|c| c.player));
+    let barbosa = ChrName::new("Barbosa");
+    assert!(!t.get_chr(&barbosa).is_some_and(|c| c.player));
+    t.set_player(&barbosa, true)?;
+    assert!(t.get_chr(&barbosa).is_some_and(|c| c.player));
 
     Ok(())
 }

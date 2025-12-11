@@ -55,7 +55,7 @@ impl AddWindow {
                     name_edit.request_focus();
                     self.focus = false;
                 }
-                
+
                 Ok(())
             }).inner
     }
@@ -69,7 +69,7 @@ impl AddWindow {
                 let c2 = if self.enable_health { c1.with_health(Health::new(self.health)) } else { c1 };
                 let character = c2.build();
                 tracker.add_chr(character)?;
-                self.close();                
+                self.close();
             },
             Some(Confirmation::Cancel) => self.close(),
             None => (),
@@ -88,7 +88,7 @@ impl AddWindow {
                 ui.label("Max HP:");
                 let drag = egui::DragValue::new(&mut self.health).range(0..=999);
                 ui.add(drag);
-            }   
+            }
         });
     }
 
@@ -106,7 +106,7 @@ impl AddWindow {
 
     fn show_name_label(&mut self, ui: &mut Ui) -> egui::Response {
         ui.heading("Add character");
-        
+
         ui.horizontal(|ui| {
             ui.label("Name: ");
             ui.text_edit_singleline(&mut self.name)

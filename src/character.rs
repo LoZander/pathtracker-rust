@@ -1,4 +1,5 @@
-use std::cmp::Ordering;
+use std::{cmp::Ordering, fmt::Display};
+use egui::WidgetText;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -48,10 +49,108 @@ impl Health {
     } 
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Hash)]
+pub struct ChrName(String);
+
+impl PartialOrd for ChrName {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.0.partial_cmp(&other.0)
+    }
+}
+
+impl Ord for ChrName {
+    fn cmp(&self, other: &Self) -> Ordering {
+        let x = &self.0;
+        let y = &other.0;
+        x.cmp(y)
+    }
+}
+
+impl ChrName {
+    pub fn new(name: impl Into<String>) -> Self {
+        Self(name.into())
+    }
+}
+
+impl AsRef<str> for ChrName {
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
+}
+
+impl Display for ChrName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl PartialEq<&Self> for ChrName {
+    fn eq(&self, other: &&Self) -> bool {
+        self.0 == other.0
+    }
+}
+
+impl PartialEq<ChrName> for &ChrName {
+    fn eq(&self, other: &ChrName) -> bool {
+        self.0 == other.0
+    }
+}
+
+impl PartialEq<&str> for ChrName {
+    fn eq(&self, other: &&str) -> bool {
+        &self.0 == other
+    }
+}
+
+impl PartialEq<ChrName> for &str {
+    fn eq(&self, other: &ChrName) -> bool {
+        other == self
+    }
+}
+
+impl PartialEq<str> for ChrName {
+    fn eq(&self, other: &str) -> bool {
+        self.0 == other
+    }
+}
+
+impl PartialEq<ChrName> for str {
+    fn eq(&self, other: &ChrName) -> bool {
+        other == self
+    }
+}
+
+impl PartialEq<String> for ChrName {
+    fn eq(&self, other: &String) -> bool {
+        self.0 == other.as_ref()
+    }
+}
+
+impl PartialEq<ChrName> for String {
+    fn eq(&self, other: &ChrName) -> bool {
+        other == self
+    }
+}
+
+impl From<ChrName> for String {
+    fn from(value: ChrName) -> Self {
+        value.0
+    }
+}
+
+impl From<ChrName> for WidgetText {
+    fn from(value: ChrName) -> Self {
+        value.0.into()
+    }
+}
+
+
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[derive(Serialize, Deserialize, Hash)]
 pub struct Chr {
-    pub name: String,
+    pub name: ChrName,
     pub init: i32,
     pub player: bool,
     pub health: Option<Health>,
@@ -76,7 +175,7 @@ impl Ord for Chr {
 
 impl Chr {
     pub fn builder(name: impl Into<String>, init: i32, player: bool) -> ChrBuilder {
-        ChrBuilder::new(name, init, player)
+        ChrBuilder::new(ChrName(name.into()), init, player)
     }
 
     pub fn heal(&mut self, x: u32) -> bool {
@@ -129,7 +228,7 @@ impl Chr {
 }
 
 pub struct ChrBuilder {
-    name: String,
+    name: ChrName,
     init: i32,
     player: bool,
     health: Option<Health>,
@@ -137,9 +236,9 @@ pub struct ChrBuilder {
 
 impl ChrBuilder {
     #[must_use]
-    pub fn new(name: impl Into<String>, init: i32, player: bool) -> Self {
+    pub fn new(name: ChrName, init: i32, player: bool) -> Self {
         Self {
-            name: name.into(),
+            name,
             init,
             player,
             health: None,

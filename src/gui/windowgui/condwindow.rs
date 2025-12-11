@@ -3,7 +3,7 @@ use std::fmt::Display;
 use egui::{vec2, Context, Ui};
 
 use crate::{
-    character::Chr,
+    character::{Chr, ChrName},
     conditions::{
         Condition, DamageType, NonValuedCondition, NonValuedTerm, TurnEvent, ValuedCondition,
         ValuedTerm,
@@ -15,8 +15,8 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub enum Response {
-    AddCondition{character: String, cond: Condition},
-    RemoveCondition{character: String, cond: Condition}
+    AddCondition{character: ChrName, cond: Condition},
+    RemoveCondition{character: ChrName, cond: Condition}
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -48,7 +48,7 @@ pub struct CondWindow {
 
 #[derive(Debug, Clone, Default)]
 struct Data {
-    character: Option<Chr>,
+    character: Option<ChrName>,
     selected: ConditionEntry,
     cond_value: u8,
     auto_tracking: bool,
@@ -56,7 +56,7 @@ struct Data {
     selected_valued_term: ValuedTermEntry,
     term_rounds: u32,
     selected_turn_event: TurnEventEntry,
-    selected_turn_event_character: String,
+    selected_turn_event_character: ChrName,
     reduction: u8
 }
 
@@ -90,9 +90,9 @@ impl Display for TurnEventEntry {
 }
 
 impl CondWindow {
-    pub fn open(&mut self, character: Chr) {
+    pub fn open(&mut self, character: ChrName) {
         self.reset();
-        self.data.selected_turn_event_character.clone_from(&character.name);
+        self.data.selected_turn_event_character = character.clone();
         self.data.character = Some(character);
         self.open = true;
     }
@@ -105,7 +105,7 @@ impl CondWindow {
         self.data.selected_nonvalued_term = NonValuedTermEntry::default();
         self.data.selected_valued_term = ValuedTermEntry::default();
         self.data.term_rounds = 0;
-        self.data.selected_turn_event_character = String::new();
+        self.data.selected_turn_event_character = ChrName::default();
     }
 
     pub fn close(&mut self) {
@@ -117,7 +117,7 @@ impl CondWindow {
         let open = &mut self.open;
         let data = &mut self.data;
         if let Some(character) = data.character.clone() {
-            let res = egui::Window::new(format!("{} Conditions", character.name))
+            let res = egui::Window::new(format!("{} Conditions", character))
                 .open(open)
                 .show(ctx, |ui| {
                     // TODO: consider changing returning tuple of (Option<AddResponse>,
@@ -126,7 +126,7 @@ impl CondWindow {
                         .horizontal(|ui| {
                             let add = show_cond_section(ui, data, &character, tracker.get_chrs().to_vec());
 
-                            let mut remove = show_cond_list_section(tracker, ui, &character);
+                            let mut remove = show_cond_list_section(tracker, ui, character);
 
                             if let Some(inner) = add {
                                 remove.push(inner);
@@ -139,7 +139,7 @@ impl CondWindow {
                     for resp in responses {
                         match resp {
                             Response::AddCondition { character, cond } => {
-                                tracker.add_condition(&character, cond)?;
+                                tracker.add_condition(character, cond)?;
                             }
                             Response::RemoveCondition { character, cond } => {
                                 tracker.rm_condition(&character, &cond);
@@ -159,7 +159,7 @@ impl CondWindow {
     }
 }
 
-fn show_cond_section(ui: &mut Ui, data: &mut Data, character: &Chr, characters: Vec<Chr>) -> Option<Response> {
+fn show_cond_section(ui: &mut Ui, data: &mut Data, character: &ChrName, characters: Vec<Chr>) -> Option<Response> {
     ui.vertical(|ui| {
         ui.set_max_width(200.);
         ui.label("Add Condition:");
@@ -173,7 +173,7 @@ fn show_cond_section(ui: &mut Ui, data: &mut Data, character: &Chr, characters: 
     .inner
 }
 
-fn show_add_button(ui: &mut Ui, data: &Data, character: &Chr) -> Option<Response> {
+fn show_add_button(ui: &mut Ui, data: &Data, character: &ChrName) -> Option<Response> {
     if ui.button("Add").clicked() {
         let condition = match data.selected {
             ConditionEntry::Valued(valued_condition) => {
@@ -206,7 +206,7 @@ fn show_add_button(ui: &mut Ui, data: &Data, character: &Chr) -> Option<Response
         };
 
         Some(Response::AddCondition {
-            character: character.name.clone(),
+            character: character.clone(),
             cond: condition,
         })
     } else {
@@ -279,7 +279,7 @@ impl Default for TermEntry {
     }
 }
 
-fn show_cond_selector(ui: &mut Ui, data: &mut Data, character: &Chr, characters: Vec<Chr>) {
+fn show_cond_selector(ui: &mut Ui, data: &mut Data, character: &ChrName, characters: Vec<Chr>) {
     ui.set_max_width(200.);
     egui::ComboBox::from_label("Condition")
         .selected_text(format!("{}", data.selected))
@@ -300,7 +300,7 @@ fn show_cond_selector(ui: &mut Ui, data: &mut Data, character: &Chr, characters:
     }
 }
 
-fn show_auto_tracking_options(ui: &mut Ui, data: &mut Data, character: &Chr, characters: Vec<Chr>) {
+fn show_auto_tracking_options(ui: &mut Ui, data: &mut Data, character: &ChrName, characters: Vec<Chr>) {
     ui.separator();
     ui.horizontal(|ui| {
         let selected = data.selected_term_string();
@@ -365,13 +365,13 @@ fn show_reduced_options(ui: &mut Ui, data: &mut Data, characters: Vec<Chr>) {
 
         egui::ComboBox::from_id_salt("turn event character")
             .width(30.)
-            .selected_text(data.selected_turn_event_character.clone())
+            .selected_text(String::from(data.selected_turn_event_character.clone()))
             .show_ui(ui, |ui| {
                 for c in characters {
                     ui.selectable_value(
                         &mut data.selected_turn_event_character,
                         c.name.clone(),
-                        c.name,
+                        String::from(c.name),
                     );
                 }
             });
@@ -527,13 +527,13 @@ fn selectable_valued_cond(ui: &mut Ui, data: &mut Data, cond: ValuedCondition) {
 fn show_cond_list_section(
     tracker: &Tracker<impl Saver>,
     ui: &mut Ui,
-    character: &Chr,
+    character: ChrName,
 ) -> Vec<Response> {
     ui.group(|ui| {
         ui.set_min_size(vec2(100.0, 100.0));
         ui.vertical_centered(|ui| {
             let mut list: Vec<_> = tracker
-                .get_conditions(&character.name)
+                .get_conditions(&character)
                 .into_iter()
                 .collect();
 
@@ -550,7 +550,7 @@ fn show_cond_list_section(
                 })
                 .map(|removed| Response::RemoveCondition {
                     cond: removed.clone(),
-                    character: character.name.clone(),
+                    character: character.clone(),
                 })
                 .collect()
         })

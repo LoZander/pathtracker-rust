@@ -1,15 +1,15 @@
 use egui::{Align, ProgressBar, Ui}; use egui_extras::{Column, TableBuilder, TableRow};
-use crate::{character::{Chr, Health}, conditions::Condition, saver::Saver, tracker::Tracker};
+use crate::{character::{Chr, ChrName, Health}, conditions::Condition, saver::Saver, tracker::Tracker};
 
 #[derive(Debug, Clone)]
 pub enum Response {
-    RemoveCharacter(Chr),
-    OpenCondWindow(Chr),
-    RenameCharacter(Chr),
-    OpenHealthWindow(Chr),
-    OpenDamageWindow(Chr),
-    OpenHealWindow(Chr),
-    OpenAddTempHpWindow(Chr)
+    RemoveCharacter(ChrName),
+    OpenCondWindow(ChrName),
+    RenameCharacter(ChrName),
+    OpenHealthWindow(ChrName),
+    OpenDamageWindow(ChrName),
+    OpenHealWindow(ChrName),
+    OpenAddTempHpWindow(ChrName)
 }
 
 pub fn show<S: Saver>(tracker: &Tracker<S>, ui: &mut Ui) -> Vec<Response> {
@@ -62,7 +62,7 @@ pub fn show<S: Saver>(tracker: &Tracker<S>, ui: &mut Ui) -> Vec<Response> {
 fn show_remove_col(responses: &mut Vec<Response>, row: &mut TableRow<'_, '_>, character: &Chr) {
     row.col(|ui| {
         if ui.small_button("x").clicked() {
-            responses.push(Response::RemoveCharacter(character.clone()));
+            responses.push(Response::RemoveCharacter(character.name.clone()));
         }
     });
 }
@@ -72,7 +72,7 @@ fn show_options_col(responses: &mut Vec<Response>, row: &mut TableRow<'_, '_>, c
     row.col(|ui| {
         ui.menu_button("...", |ui| {
             if ui.button("Conditions").clicked() {
-                responses.push(Response::OpenCondWindow(character.clone()));
+                responses.push(Response::OpenCondWindow(character.name.clone()));
             }
 
             // NB: these ifs are nested instead of collapsed using && as the
@@ -83,19 +83,19 @@ fn show_options_col(responses: &mut Vec<Response>, row: &mut TableRow<'_, '_>, c
             if character.health.is_some() {
                 ui.menu_button("Health", |ui| {
                     if ui.button("Set HP").clicked() {
-                        responses.push(Response::OpenHealthWindow(character.clone()));
+                        responses.push(Response::OpenHealthWindow(character.name.clone()));
                     }
 
                     if ui.button("Damage").clicked() {
-                        responses.push(Response::OpenDamageWindow(character.clone()));
+                        responses.push(Response::OpenDamageWindow(character.name.clone()));
                     }
 
                     if ui.button("Heal").clicked() {
-                        responses.push(Response::OpenHealWindow(character.clone()));
+                        responses.push(Response::OpenHealWindow(character.name.clone()));
                     }
 
                     if ui.button("Add Temp HP").clicked() {
-                        responses.push(Response::OpenAddTempHpWindow(character.clone()));
+                        responses.push(Response::OpenAddTempHpWindow(character.name.clone()));
                     }
                 });
             }
@@ -116,7 +116,7 @@ fn show_conds_col(tracker: &Tracker<impl Saver>, responses: &mut Vec<Response>, 
         };
 
         if conds.clicked() {
-            responses.push(Response::OpenCondWindow(character.clone()));
+            responses.push(Response::OpenCondWindow(character.name.clone()));
         }
 
         conds.on_hover_text(conditions.iter().map(ToString::to_string).collect::<Vec<_>>().join("\n"));
@@ -137,7 +137,7 @@ fn show_health_col(responses: &mut Vec<Response>, row: &mut TableRow<'_, '_>, ch
             let bar_resp = ui.add(health_bar(health)).interact(egui::Sense::click());
 
             if bar_resp.clicked() {
-                responses.push(Response::OpenHealthWindow(character.clone()));
+                responses.push(Response::OpenHealthWindow(character.name.clone()));
             }
 
             let health_bar_menu_id = ui.make_persistent_id("health_bar_menu");
@@ -148,19 +148,19 @@ fn show_health_col(responses: &mut Vec<Response>, row: &mut TableRow<'_, '_>, ch
 
             egui::popup_below_widget(ui, health_bar_menu_id, &bar_resp, egui::PopupCloseBehavior::CloseOnClick, |ui| {
                 if ui.button("Damage").clicked() {
-                    responses.push(Response::OpenDamageWindow(character.clone()));
+                    responses.push(Response::OpenDamageWindow(character.name.clone()));
                 }
 
                 if ui.button("Heal").clicked() {
-                    responses.push(Response::OpenHealWindow(character.clone()));
+                    responses.push(Response::OpenHealWindow(character.name.clone()));
                 }
 
                 if ui.button("Add temp").clicked() {
-                    responses.push(Response::OpenAddTempHpWindow(character.clone()));
+                    responses.push(Response::OpenAddTempHpWindow(character.name.clone()));
                 }
 
                 if ui.button("Set HP").clicked() {
-                    responses.push(Response::OpenHealthWindow(character.clone()));
+                    responses.push(Response::OpenHealthWindow(character.name.clone()));
                 }
             });
         }
@@ -178,7 +178,7 @@ fn show_name_col(responses: &mut Vec<Response>, row: &mut TableRow<'_, '_>, char
         };
 
         if name.clicked() {
-            responses.push(Response::RenameCharacter(character.clone()));
+            responses.push(Response::RenameCharacter(character.name.clone()));
         }
     });
 }

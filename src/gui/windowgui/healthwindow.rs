@@ -1,5 +1,5 @@
 use egui::Context;
-use crate::{character::Chr, saver::Saver, tracker::Tracker};
+use crate::{character::ChrName, saver::Saver, tracker::Tracker};
 
 use super::Confirmation;
 
@@ -8,7 +8,7 @@ use super::Confirmation;
 pub struct HealthWindow {
     show: bool,
     focus: bool,
-    character: Option<Chr>,
+    character: Option<ChrName>,
     health: HealthData
 }
 
@@ -21,13 +21,13 @@ struct HealthData {
 }
 
 impl HealthWindow {
-    pub fn open(&mut self, character: Chr) {
-        if let Some(health) = &character.health { 
+    pub fn open<S: Saver>(&mut self, tracker: &Tracker<S>, character: ChrName) {
+        if let Some(health) = tracker.get_chr(&character).and_then(|c| c.health.as_ref()) {
             self.health = HealthData {
                 current: health.current,
                 max: health.max,
                 temp: health.temp
-            } 
+            }
         }
 
         self.character = Some(character);
@@ -44,7 +44,7 @@ impl HealthWindow {
     }
 
     pub fn show(&mut self, tracker: &mut Tracker<impl Saver>, ctx: &Context) -> super::Result<()> {
-        self.character.as_ref().map(|c| c.name.to_string()).map_or(Ok(()), 
+        self.character.as_ref().map(|c| c.clone()).map_or(Ok(()), 
             |name| egui::Modal::new("health window".into()).show(ctx, |ui| {
                 ui.heading(format!("Health of {name}"));
 
@@ -60,7 +60,7 @@ impl HealthWindow {
             }).inner)
     }
 
-    fn show_confirmation_bar(&mut self, tracker: &mut Tracker<impl Saver>, ui: &mut egui::Ui, name: &str) -> super::Result<()> {
+    fn show_confirmation_bar(&mut self, tracker: &mut Tracker<impl Saver>, ui: &mut egui::Ui, name: &ChrName) -> super::Result<()> {
         let confirmation = super::show_confirmation_bar(ui);
 
         match confirmation {
