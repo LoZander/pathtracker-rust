@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
-use pathtracker_rust::{character::{Chr, Health}, conditions::{condition_manager::ConditionManager, Condition, DamageType, NonValuedCondition, NonValuedTerm, TurnEvent, ValuedCondition, ValuedTerm}, duration::Duration, saver::NoSaver, tracker::{self, Tracker}};
+use pathtracker_rust::{character::{Chr, ChrName, Health}, conditions::{Condition, DamageType, NonValuedCondition, NonValuedTerm, TurnEvent, ValuedCondition, ValuedTerm, condition_manager::ConditionManager}, duration::Duration, saver::NoSaver, tracker::{self, Tracker}};
 
 #[test]
 fn add_condition_adds() {
@@ -8,12 +8,14 @@ fn add_condition_adds() {
     let condition = Condition::builder()
         .condition(ValuedCondition::Frightened)
         .value(3)
-        .term(ValuedTerm::Reduced(TurnEvent::EndOfNextTurn(String::from("bob")), 1))
+        .term(ValuedTerm::Reduced(TurnEvent::EndOfNextTurn(ChrName::new("bob")), 1))
         .build();
 
-    cm.add_condition("bob", condition.clone());
+    let bob = ChrName::new("bob");
 
-    assert!(cm.get_conditions("bob").contains(&condition));
+    cm.add_condition(bob.clone(), condition.clone());
+
+    assert!(cm.get_conditions(&bob).contains(&condition));
 }
 
 #[test]
@@ -22,13 +24,15 @@ fn remove_condition_removes() {
     let condition = Condition::Valued {
         cond: ValuedCondition::Frightened,
         level: 5,
-        term: ValuedTerm::Reduced(TurnEvent::EndOfNextTurn(String::from("bob")), 1)
+        term: ValuedTerm::Reduced(TurnEvent::EndOfNextTurn(ChrName::new("bob")), 1)
     };
 
-    cm.add_condition("bob", condition.clone());
-    cm.remove_condition("bob", &condition);
+    let bob = ChrName::new("bob");
 
-    assert!(!cm.get_conditions("bob").contains(&condition));
+    cm.add_condition(bob.clone(), condition.clone());
+    cm.remove_condition(&bob, &condition);
+
+    assert!(!cm.get_conditions(&bob).contains(&condition));
 }
 
 #[test]
@@ -40,18 +44,20 @@ fn remove_bleed_doesnt_remove_frighten() {
         term: ValuedTerm::Manual
     };
 
-    cm.add_condition("bob", bleed.clone());
+    cm.add_condition(ChrName::new("bob"), bleed.clone());
     
     let frightened = Condition::Valued {
         cond: ValuedCondition::Frightened,
         level: 3,
-        term: ValuedTerm::Reduced(TurnEvent::EndOfNextTurn(String::from("bob")), 1)
+        term: ValuedTerm::Reduced(TurnEvent::EndOfNextTurn(ChrName::new("bob")), 1)
     };
 
-    cm.add_condition("bob", frightened.clone());
-    cm.remove_condition("bob", &frightened);
+    let bob = ChrName::new("bob");
 
-    assert!(cm.get_conditions("bob").contains(&bleed));
+    cm.add_condition(bob.clone(), frightened.clone());
+    cm.remove_condition(&bob, &frightened);
+
+    assert!(cm.get_conditions(&bob).contains(&bleed));
 }
 
 #[test]
@@ -62,10 +68,12 @@ fn alice_manual_condition_remains_after_alice_turn_ends() {
         .value(4)
         .build();
 
-    cm.add_condition("Alice", bleed.clone());
-    cm.end_of_turn("Alice");
+    let alice = ChrName::new("Alice");
 
-    assert!(cm.get_conditions("Alice").contains(&bleed));
+    cm.add_condition(alice.clone(), bleed.clone());
+    cm.end_of_turn(alice.clone());
+
+    assert!(cm.get_conditions(&alice).contains(&bleed));
 }
 
 #[test]
@@ -75,19 +83,26 @@ fn alice_manual_condition_remains_after_alice_turn_starts() {
         .condition(ValuedCondition::PersistentDamage(DamageType::Bleed))
         .value(4)
         .build();
-    cm.add_condition("Alice", bleed.clone());
-    cm.start_of_turn("Alice");
 
-    assert!(cm.get_conditions("Alice").contains(&bleed));
+    let alice = ChrName::new("Alice");
+
+    cm.add_condition(alice.clone(), bleed.clone());
+    cm.start_of_turn(alice.clone());
+
+    assert!(cm.get_conditions(&alice).contains(&bleed));
 }
 
 #[test]
 fn alice_manual_condition_remains_after_bob_turn_ends() {
     let mut cm = ConditionManager::new();
     let blinded = Condition::builder().condition(NonValuedCondition::Blinded).build();
-    cm.add_condition("Alice", blinded.clone());
-    cm.end_of_turn("Bob");
-    assert!(cm.get_conditions("Alice").contains(&blinded));
+
+    let alice = ChrName::new("Alice");
+    let bob = ChrName::new("Bob");
+
+    cm.add_condition(alice.clone(), blinded.clone());
+    cm.end_of_turn(bob);
+    assert!(cm.get_conditions(&alice).contains(&blinded));
 }
 
 #[test]
@@ -98,15 +113,18 @@ fn alice_manual_condition_tracker_integration() -> tracker::Result<()> {
     t.add_chr(alice)?;
     t.add_chr(bob)?;
     let blinded = Condition::builder().condition(NonValuedCondition::Blinded).build();
-    t.add_condition("Alice", blinded.clone())?;
 
-    assert!(t.get_conditions("Alice").contains(&blinded));
+    let alice = ChrName::new("Alice");
+
+    t.add_condition(alice.clone(), blinded.clone())?;
+
+    assert!(t.get_conditions(&alice).contains(&blinded));
     t.end_turn()?;
-    assert!(t.get_conditions("Alice").contains(&blinded));
+    assert!(t.get_conditions(&alice).contains(&blinded));
     t.end_turn()?;
-    assert!(t.get_conditions("Alice").contains(&blinded));
+    assert!(t.get_conditions(&alice).contains(&blinded));
     t.end_turn()?;
-    assert!(t.get_conditions("Alice").contains(&blinded));
+    assert!(t.get_conditions(&alice).contains(&blinded));
 
     Ok(())
 }
@@ -118,10 +136,13 @@ fn three_turn_nonvalued_condition_duration_reduced_to_2_turns_after_character_en
         .condition(NonValuedCondition::Blinded)
         .term(NonValuedTerm::For(Duration::from_turns(3)))
         .build();
-    cm.add_condition("Alice", blinded.clone());
+
+    let alice = ChrName::new("Alice");
+
+    cm.add_condition(alice.clone(), blinded.clone());
     
-    cm.end_of_turn("Alice");
-    match cm.get_conditions("Alice").get(&blinded) {
+    cm.end_of_turn(alice.clone());
+    match cm.get_conditions(&alice).get(&blinded) {
         Some(Condition::NonValued { term: NonValuedTerm::For(dur), .. }) => 
             assert_eq!(&Duration::from_turns(2), dur),
         _ => panic!(),
@@ -135,10 +156,14 @@ fn three_turn_nonvalued_condition_duration_unchanged_after_other_character_end_o
         .condition(NonValuedCondition::Blinded)
         .term(NonValuedTerm::For(Duration::from_turns(3)))
         .build();
-    cm.add_condition("Alice", blinded.clone());
+
+    let alice = ChrName::new("Alice");
+    let bob = ChrName::new("Bob");
+
+    cm.add_condition(alice.clone(), blinded.clone());
     
-    cm.end_of_turn("Bob");
-    match cm.get_conditions("Alice").get(&blinded) {
+    cm.end_of_turn(bob);
+    match cm.get_conditions(&alice).get(&blinded) {
         Some(Condition::NonValued { term: NonValuedTerm::For(dur), .. }) => 
             assert_eq!(&Duration::from_turns(3), dur),
         _ => panic!(),
@@ -153,10 +178,13 @@ fn three_turn_valued_condition_duration_reduced_to_2_turns_after_character_end_o
         .value(4)
         .term(ValuedTerm::For(Duration::from_turns(3)))
         .build();
-    cm.add_condition("Alice", bleed.clone());
 
-    cm.end_of_turn("Alice");
-    match cm.get_conditions("Alice").get(&bleed) {
+    let alice = ChrName::new("Alice");
+
+    cm.add_condition(alice.clone(), bleed.clone());
+
+    cm.end_of_turn(alice.clone());
+    match cm.get_conditions(&alice).get(&bleed) {
         Some(Condition::Valued { term: ValuedTerm::For(dur), .. }) =>
             assert_eq!(&Duration::from_turns(2), dur),
         _ => panic!(),
@@ -170,10 +198,13 @@ fn one_turn_nonvalued_condition_duration_removed_after_character_end_of_turn() {
         .condition(NonValuedCondition::Blinded)
         .term(NonValuedTerm::For(Duration::from_turns(1)))
         .build();
-    cm.add_condition("Alice", blinded.clone());
 
-    cm.end_of_turn("Alice");
-    assert_eq!(None, cm.get_conditions("Alice").get(&blinded));
+    let alice = ChrName::new("Alice");
+
+    cm.add_condition(alice.clone(), blinded.clone());
+
+    cm.end_of_turn(alice.clone());
+    assert_eq!(None, cm.get_conditions(&alice).get(&blinded));
 }
 
 #[test]
@@ -185,12 +216,15 @@ fn persistent_damage_reduces_health_at_end_of_turn() -> tracker::Result<()> {
         .condition(ValuedCondition::PersistentDamage(DamageType::Bleed))
         .value(5)
         .build();
-    t.add_condition("Alice", bleed)?;
+
+    let alice = ChrName::new("Alice");
+
+    t.add_condition(alice.clone(), bleed)?;
 
     t.end_turn()?;
     t.end_turn()?;
 
-    assert_eq!(25, t.get_chr("Alice").unwrap().health.as_ref().unwrap().current);
+    assert_eq!(25, t.get_chr(&alice).unwrap().health.as_ref().unwrap().current);
 
     Ok(())
 }
@@ -205,19 +239,22 @@ fn persistent_bleed_10_reduced_start_alice_on_bob() -> tracker::Result<()> {
     let bleed = Condition::builder()
         .condition(ValuedCondition::PersistentDamage(DamageType::Bleed))
         .value(10)
-        .term(ValuedTerm::Reduced(TurnEvent::StartOfNextTurn(String::from("Alice")), 3))
+        .term(ValuedTerm::Reduced(TurnEvent::StartOfNextTurn(ChrName::new("Alice")), 3))
         .build();
-    t.add_condition("Bob", bleed)?;
+
+    let bob = ChrName::new("Bob");
+
+    t.add_condition(bob.clone(), bleed)?;
 
     t.end_turn()?;
     t.end_turn()?;
 
-    assert_eq!(30, t.get_chr("Bob").unwrap().health.as_ref().unwrap().current);
+    assert_eq!(30, t.get_chr(&bob).unwrap().health.as_ref().unwrap().current);
 
     t.end_turn()?;
     t.end_turn()?;
 
-    assert_eq!(23, t.get_chr("Bob").unwrap().health.as_ref().unwrap().current);
+    assert_eq!(23, t.get_chr(&bob).unwrap().health.as_ref().unwrap().current);
 
     Ok(())
 }
@@ -225,35 +262,43 @@ fn persistent_bleed_10_reduced_start_alice_on_bob() -> tracker::Result<()> {
 #[test]
 fn flat_footed_until_end_of_current_turn_ends_with_current_turn() {
     let mut conds = ConditionManager::new();
+
+    let alice = ChrName::new("Alice");
+
     let cond = Condition::builder().condition(NonValuedCondition::FlatFooted)
-        .term(NonValuedTerm::Until(TurnEvent::EndOfCurrentTurn(String::from("Alice"))))
+        .term(NonValuedTerm::Until(TurnEvent::EndOfCurrentTurn(alice.clone())))
         .build();
-    conds.add_condition("Alice", cond.clone());
 
-    assert!(conds.get_conditions("Alice").contains(&cond));
-    conds.end_of_turn("Alice");
 
-    assert!(!conds.get_conditions("Alice").contains(&cond));
+    conds.add_condition(alice.clone(), cond.clone());
+
+    assert!(conds.get_conditions(&alice).contains(&cond));
+    conds.end_of_turn(alice.clone());
+
+    assert!(!conds.get_conditions(&alice).contains(&cond));
 }
 
 #[test]
 fn clumsy_reduced_one_end_of_current_turn_is_reduced() {
     let mut conds = ConditionManager::new();
+
+    let alice = ChrName::new("Alice");
+    
     let cond = Condition::builder().condition(ValuedCondition::Clumsy)
         .value(3)
-        .term(ValuedTerm::Reduced(TurnEvent::EndOfCurrentTurn(String::from("Alice")), 1))
+        .term(ValuedTerm::Reduced(TurnEvent::EndOfCurrentTurn(alice.clone()), 1))
         .build();
-    conds.add_condition("Alice", cond.clone());
+    conds.add_condition(alice.clone(), cond.clone());
 
-    match conds.get_conditions("Alice").get(&cond) {
+    match conds.get_conditions(&alice).get(&cond) {
         Some(&c @ Condition::Valued{level, ..}) if c == &cond =>
             assert_eq!(3, *level),
         _ => panic!()
     }
 
-    conds.end_of_turn("Alice");
+    conds.end_of_turn(alice.clone());
 
-    match conds.get_conditions("Alice").get(&cond) {
+    match conds.get_conditions(&alice).get(&cond) {
         Some(&c @ Condition::Valued{level, ..}) if c == &cond =>
             assert_eq!(2, *level),
         _ => panic!()
@@ -263,52 +308,62 @@ fn clumsy_reduced_one_end_of_current_turn_is_reduced() {
 #[test]
 fn flat_footed_until_end_of_next_turn_doesnt_end_with_current() {
     let mut conds = ConditionManager::new();
+
+    let alice = ChrName::new("Alice");
+
     let cond = Condition::builder().condition(NonValuedCondition::FlatFooted)
-        .term(NonValuedTerm::Until(TurnEvent::EndOfNextTurn(String::from("Alice"))))
+        .term(NonValuedTerm::Until(TurnEvent::EndOfNextTurn(alice.clone())))
         .build();
-    conds.add_condition("Alice", cond.clone());
+    conds.add_condition(alice.clone(), cond.clone());
 
-    assert!(conds.get_conditions("Alice").contains(&cond));
+    assert!(conds.get_conditions(&alice).contains(&cond));
 
-    conds.end_of_turn("Alice");
+    conds.end_of_turn(alice.clone());
 
-    assert!(conds.get_conditions("Alice").contains(&cond));
+    assert!(conds.get_conditions(&alice).contains(&cond));
 }
 
 #[test]
 fn flat_footed_until_end_of_next_turn_ends_after_it_end_of_other_turn_and_then_affecteds() {
     let mut conds = ConditionManager::new();
+
+    let alice = ChrName::new("Alice");
+    let bob = ChrName::new("Bob");
+
     let cond = Condition::builder().condition(NonValuedCondition::FlatFooted)
-        .term(NonValuedTerm::Until(TurnEvent::EndOfNextTurn(String::from("Alice"))))
+        .term(NonValuedTerm::Until(TurnEvent::EndOfNextTurn(alice.clone())))
         .build();
-    conds.add_condition("Alice", cond.clone());
+    conds.add_condition(alice.clone(), cond.clone());
 
-    assert!(conds.get_conditions("Alice").contains(&cond));
+    assert!(conds.get_conditions(&alice).contains(&cond));
 
-    conds.end_of_turn("Bob");
-    conds.end_of_turn("Alice");
+    conds.end_of_turn(bob);
+    conds.end_of_turn(alice.clone());
 
-    assert!(!conds.get_conditions("Alice").contains(&cond));
+    assert!(!conds.get_conditions(&alice).contains(&cond));
 }
 
 #[test]
 fn clumsy_reduced_end_of_next_turn_doesnt_reduce_after_end_of_current() {
     let mut conds = ConditionManager::new();
+
+    let alice = ChrName::new("Alice");
+
     let cond = Condition::builder().condition(ValuedCondition::Clumsy)
         .value(3)
-        .term(ValuedTerm::Reduced(TurnEvent::EndOfNextTurn(String::from("Alice")), 1))
+        .term(ValuedTerm::Reduced(TurnEvent::EndOfNextTurn(alice.clone()), 1))
         .build();
-    conds.add_condition("Alice", cond.clone());
+    conds.add_condition(alice.clone(), cond.clone());
 
-    match conds.get_conditions("Alice").get(&cond) {
+    match conds.get_conditions(&alice).get(&cond) {
         Some(&c @ Condition::Valued{level, ..}) if c == &cond =>
             assert_eq!(3, *level),
         _ => panic!()
     }
 
-    conds.end_of_turn("Alice");
+    conds.end_of_turn(alice.clone());
 
-    match conds.get_conditions("Alice").get(&cond) {
+    match conds.get_conditions(&alice).get(&cond) {
         Some(&c @ Condition::Valued{level, ..}) if c == &cond =>
             assert_eq!(3, *level),
         _ => panic!()
@@ -318,16 +373,20 @@ fn clumsy_reduced_end_of_next_turn_doesnt_reduce_after_end_of_current() {
 #[test]
 fn clumsy_reduced_end_of_next_turn_reduces_after_end_of_other_turn_and_then_affecteds() {
     let mut conds = ConditionManager::new();
+
+    let alice = ChrName::new("Alice");
+    let bob = ChrName::new("Bob");
+
     let cond = Condition::builder().condition(ValuedCondition::Clumsy)
         .value(3)
-        .term(ValuedTerm::Reduced(TurnEvent::EndOfNextTurn(String::from("Alice")), 1))
+        .term(ValuedTerm::Reduced(TurnEvent::EndOfNextTurn(alice.clone()), 1))
         .build();
-    conds.add_condition("Alice", cond.clone());
+    conds.add_condition(alice.clone(), cond.clone());
 
-    conds.end_of_turn("Bob");
-    conds.end_of_turn("Alice");
+    conds.end_of_turn(bob);
+    conds.end_of_turn(alice.clone());
 
-    match conds.get_conditions("Alice").get(&cond) {
+    match conds.get_conditions(&alice).get(&cond) {
         Some(&c @ Condition::Valued{level, ..}) if c == &cond =>
             assert_eq!(2, *level),
         _ => panic!()

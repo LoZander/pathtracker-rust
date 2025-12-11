@@ -3,21 +3,21 @@ use serde::{Deserialize, Serialize};
 
 use thiserror::Error;
 
-use crate::{character::Chr, conditions::{condition_manager::ConditionManager, Condition}, saver::{self, Saver}};
+use crate::{character::{Chr, ChrName}, conditions::{Condition, condition_manager::ConditionManager}, saver::{self, Saver}};
 
 #[derive(Debug, Error)]
 pub enum Error {
     #[error("cannot add character with name `{0}` as there is already a character with this name.")]
-    AddDupError(String),
+    AddDupError(ChrName),
 
     #[error("cannot remove a character of name `{0}` as no such character exists.")]
-    RmNoneError(String),
+    RmNoneError(ChrName),
 
     #[error("cannot modify character `{0}` as no such character exists.")]
-    ChangeNoneError(String),
+    ChangeNoneError(ChrName),
 
     #[error("cannot rename `{old}` into `{new}` as there is already a character with this name.")]
-    RenameDupError { old: String, new: String },
+    RenameDupError { old: ChrName, new: String },
 
     #[error("load error: `{0}`")]
     LoadError(#[from] saver::Error)
@@ -143,13 +143,13 @@ impl<S: Saver> Tracker<S> {
 
     /// Returns a reference to the character [`Chr`] with the given [`name`],
     /// if such a one exists.
-    pub fn get_chr(&self, name: &str) -> Option<&Chr> {
+    pub fn get_chr(&self, name: &ChrName) -> Option<&Chr> {
         self.chrs.iter().find(|chr| chr.name == name)
     }
 
     /// Returns the position on the tracker order of the character with the
     /// given [`name`], if such a one exists.
-    fn pos(&self, name: &str) -> Option<usize> {
+    fn pos(&self, name: &ChrName) -> Option<usize> {
         self.chrs.iter().enumerate().find(|(_,x)| x.name == name).map(|e| e.0)
     }
 
@@ -166,7 +166,7 @@ impl<S: Saver> Tracker<S> {
     /// This function will return an error if auto saving fails.
     pub fn end_turn(&mut self) -> Result<Option<&Chr>> {
         if let Some(chr) = self.get_in_turn().cloned() {
-            let damage = self.cm.end_of_turn(&chr.name);
+            let damage = self.cm.end_of_turn(chr.name.clone());
             if let Some(damage) = damage {
                 // It can only fail if there is no character by the name,
                 // which there naturally will always be in this if body
@@ -182,9 +182,10 @@ impl<S: Saver> Tracker<S> {
             });
         }
 
-        if let Some(chr) = self.get_in_turn().cloned() {
-            self.cm.start_of_turn(&chr.name);
+        if let Some(chr) = self.get_in_turn() {
+            self.cm.start_of_turn(chr.name.clone());
         }
+
         self.auto_save()?;
         Ok(self.get_in_turn())
     }
@@ -225,9 +226,9 @@ impl<S: Saver> Tracker<S> {
     /// This function will return an error if
     /// - There is no character named [`name`]
     /// - Auto saving fails.
-    pub fn add_condition(&mut self, name: &str, cond: Condition) -> Result<()> {
-        match self.get_chr(name) {
-            None => Err(Error::ChangeNoneError(name.to_string())),
+    pub fn add_condition(&mut self, name: ChrName, cond: Condition) -> Result<()> {
+        match self.get_chr(&name) {
+            None => Err(Error::ChangeNoneError(name.clone())),
             Some(_) => {
                 self.cm.add_condition(name, cond);
                 self.auto_save()?;
@@ -241,7 +242,7 @@ impl<S: Saver> Tracker<S> {
     /// Provided the name of a character, a [`HashSet<&Condition>`] of
     /// their conditions is returned. If there is no character with the given name,
     /// an empty set is returned.
-    pub fn get_conditions(&self, character: &str) -> HashSet<&Condition> {
+    pub fn get_conditions(&self, character: &ChrName) -> HashSet<&Condition> {
         self.cm.get_conditions(character)
     }
 
@@ -249,7 +250,7 @@ impl<S: Saver> Tracker<S> {
     ///
     /// If there is no character with the given name, or the character has no
     /// such condition, nothing happens.
-    pub fn rm_condition(&mut self, character: &str, condition: &Condition) {
+    pub fn rm_condition(&mut self, character: &ChrName, condition: &Condition) {
         self.cm.remove_condition(character, condition);
     }
     
@@ -263,10 +264,10 @@ impl<S: Saver> Tracker<S> {
     /// This function will return an error if 
     /// - There is no character with the given [`name`]
     /// - Auto saving fails.
-    pub fn rm_chr(&mut self, name: &str) -> Result<()> {
+    pub fn rm_chr(&mut self, name: &ChrName) -> Result<()> {
         let rm_index = self.chrs.iter()
             .position(|chr| chr.name == name)
-            .ok_or_else(|| Error::RmNoneError(name.to_string()))?;
+            .ok_or_else(|| Error::RmNoneError(name.clone()))?;
 
         let removed = self.chrs.remove(rm_index);
 
@@ -306,16 +307,17 @@ impl<S: Saver> Tracker<S> {
     /// This function will return an error if
     /// - There's no character with the given [`name`] 
     /// - Auto saving fails.
-    pub fn rename(&mut self, old: &str, new: impl Into<String>) -> Result<()> {
+    pub fn rename(&mut self, old: &ChrName, new: impl Into<String>) -> Result<()> {
         let new: String = new.into();
-
         if self.chrs.iter().any(|chr| chr.name == new) {
-            return Err(Error::RenameDupError { old: old.into(), new })
+            return Err(Error::RenameDupError { old: old.clone(), new })
         }
 
-        self.cm.rename_character(old, &new);
+        let new_chrname = ChrName::new(new);
 
-        self.unchecked_change(old, |chr| { chr.name = new; })
+        self.cm.rename_character(old, new_chrname.clone());
+
+        self.unchecked_change(old, |chr| { chr.name = new_chrname; })
     }
 
     /// Changes the initiative of the character.
@@ -328,7 +330,7 @@ impl<S: Saver> Tracker<S> {
     /// This function will return an error if 
     /// - There's no character with the given [`name`]
     /// - Auto saving fails.
-    pub fn change_init(&mut self, name: &str, init: i32) -> Result<Option<MovedStatus>> {
+    pub fn change_init(&mut self, name: &ChrName, init: i32) -> Result<Option<MovedStatus>> {
         self.change(name, |chr| chr.init = init)
     }
 
@@ -341,7 +343,7 @@ impl<S: Saver> Tracker<S> {
     /// This function will return an error if 
     /// - There's no character with the given [`name`]
     /// - Auto saving fails.
-    pub fn set_player(&mut self, name: &str, player: bool) -> Result<()> {
+    pub fn set_player(&mut self, name: &ChrName, player: bool) -> Result<()> {
         self.unchecked_change(name, |chr| chr.player = player)
     }
 
@@ -354,19 +356,19 @@ impl<S: Saver> Tracker<S> {
     /// This function will return an error if 
     /// - There's no character with the given [`name`] 
     /// - Auto saving fails.
-    pub fn change_max_health(&mut self, name: &str, max: u32) -> Result<()> {
+    pub fn change_max_health(&mut self, name: &ChrName, max: u32) -> Result<()> {
         self.unchecked_change(name, |chr| {chr.set_max_health(max);})
     }
 
-    pub fn set_current_health(&mut self, name: &str, hp: u32) -> Result<()> {
+    pub fn set_current_health(&mut self, name: &ChrName, hp: u32) -> Result<()> {
         self.unchecked_change(name, |chr| {chr.set_current_health(hp);})
     }
 
-    pub fn set_temp_health(&mut self, name: &str, hp: u32) -> Result<()> {
+    pub fn set_temp_health(&mut self, name: &ChrName, hp: u32) -> Result<()> {
         self.unchecked_change(name, |chr| {chr.set_temp_health(hp);})
     }
 
-    pub fn add_temp_health(&mut self, name: &str, hp: u32) -> Result<()> {
+    pub fn add_temp_health(&mut self, name: &ChrName, hp: u32) -> Result<()> {
         self.unchecked_change(name, |chr| {chr.add_temp_health(hp);})
     }
 
@@ -377,7 +379,7 @@ impl<S: Saver> Tracker<S> {
     /// This function will return an error if .
     /// - There's no character with the given [`name`]
     /// - Auto saving fails.
-    pub fn damage(&mut self, name: &str, amount: u32) -> Result<()> {
+    pub fn damage(&mut self, name: &ChrName, amount: u32) -> Result<()> {
         self.unchecked_change(name, |chr| { chr.damage(amount); })
     }
 
@@ -388,11 +390,11 @@ impl<S: Saver> Tracker<S> {
     /// This function will return an error if
     /// - There's no character wit hthe given [`name`]
     /// - Auto saving fails.
-    pub fn heal(&mut self, name: &str, heal: u32) -> Result<()> {
+    pub fn heal(&mut self, name: &ChrName, heal: u32) -> Result<()> {
         self.unchecked_change(name, |chr| { chr.heal(heal); })
     }
 
-    fn unchecked_change<F>(&mut self, name: &str, f: F) -> Result<()> where
+    fn unchecked_change<F>(&mut self, name: &ChrName, f: F) -> Result<()> where
         F: FnOnce(&mut Chr)
     {
         for chr in &mut self.chrs {
@@ -404,18 +406,18 @@ impl<S: Saver> Tracker<S> {
             }
         }
 
-        Err(Error::ChangeNoneError(name.into()))
+        Err(Error::ChangeNoneError(name.clone()))
     }
 
-    fn change<F>(&mut self, name: &str, f: F) -> Result<Option<MovedStatus>> where
+    fn change<F>(&mut self, name: &ChrName, f: F) -> Result<Option<MovedStatus>> where
         F: FnOnce(&mut Chr)
     {
-        let before = self.pos(name).ok_or_else(|| Error::ChangeNoneError(name.into()))?;
+        let before = self.pos(name).ok_or_else(|| Error::ChangeNoneError(name.clone()))?;
         let in_turn = self.in_turn_index;
 
         self.unchecked_change(name, f)?;
 
-        let after = self.pos(name).ok_or_else(|| Error::ChangeNoneError(name.into()))?;
+        let after = self.pos(name).ok_or_else(|| Error::ChangeNoneError(name.clone()))?;
 
         if let Some(in_turn) = in_turn {
             if before == in_turn && after < in_turn {

@@ -2,7 +2,7 @@ use std::io;
 use const_format::concatcp;
 use help::Topic;
 use thiserror::Error;
-use crate::{character::{Chr, Health}, conditions::Condition, saver::Saver, tracker::{self, Tracker}};
+use crate::{character::{Chr, ChrName, Health}, conditions::Condition, saver::Saver, tracker::{self, Tracker}};
 
 mod parser;
 mod help;
@@ -93,21 +93,21 @@ pub fn run<S: Saver>(mut t: Tracker<S>) -> Result<(), Error> {
 enum Command {
     EndTurn,
     AddChr { 
-        name: String, 
+        name: ChrName,
         init: i32, 
         player: bool, 
         health: Option<u32> 
     },
-    RmChr { name: String },
-    AddCond { character: String, cond: Condition },
+    RmChr { name: ChrName },
+    AddCond { character: ChrName, cond: Condition },
     Mod { 
-        name: String, 
+        name: ChrName,
         new_name: Option<String>,
         init: Option<i32>, 
         player: Option<bool>,
         health: Option<u32>
     },
-    RmCond { character: String, cond: Condition },
+    RmCond { character: ChrName, cond: Condition },
     Help(Topic),
 }
 
@@ -123,7 +123,7 @@ fn execute_command<S: Saver>(t: &mut Tracker<S>, cmd: Command) -> tracker::Resul
             t.add_chr(builder.build())
         },
         Command::RmChr { name } => t.rm_chr(&name),
-        Command::AddCond { character, cond } => t.add_condition(&character, cond),
+        Command::AddCond { character, cond } => t.add_condition(character, cond),
         Command::RmCond { character, cond } => { t.rm_condition(&character, &cond); Ok(()) },
         Command::Mod { name, new_name, init, player, health } => {
             if let Some(init) = init {

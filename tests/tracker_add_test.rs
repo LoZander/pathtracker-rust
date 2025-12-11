@@ -1,12 +1,12 @@
 use pathtracker_rust::{
-    character::Chr, saver::NoSaver, tracker::{self, Tracker}
+    character::{Chr, ChrName}, saver::NoSaver, tracker::{self, Tracker}
 };
 
 #[test]
 fn add_player_chr_alison_adds_chr() -> tracker::Result<()> {
     let mut t: Tracker<NoSaver> = Tracker::default();
     t.add_chr(Chr::builder("Alison", 21, true).build())?;
-    assert_eq!(Some(&Chr::builder("Alison", 21, true).build()), t.get_chr("Alison"));
+    assert_eq!(Some(&Chr::builder("Alison", 21, true).build()), t.get_chr(&ChrName::new("Alison")));
     Ok(())
 }
 
@@ -61,6 +61,19 @@ fn add_chr_after_in_turn_preserves_in_turn() -> tracker::Result<()> {
     assert_eq!(Some(&Chr::builder("Hellen", 27, true).build()), t.get_in_turn());
     t.add_chr(Chr::builder("Unlucky", 24, false).build())?;
     assert_eq!(Some(&Chr::builder("Hellen", 27, true).build()), t.get_in_turn());
+
+    Ok(())
+}
+
+#[test]
+fn add_twice() -> tracker::Result<()> {
+    let mut t: Tracker<NoSaver> = Tracker::builder().build();
+
+    let alice = Chr::builder("Alice", 20, false).build();
+    let bob = Chr::builder("Bob", 21, false).build();
+
+    t.add_chr(alice)?;
+    t.add_chr(bob)?;
 
     Ok(())
 }

@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use serde::{Deserialize, Serialize};
 
-use crate::duration::Duration;
+use crate::{character::ChrName, duration::Duration};
 
 use super::{Condition, NonValuedTerm, TurnEvent, ValuedCondition, ValuedTerm};
 
@@ -11,8 +11,8 @@ pub type Damage = u8;
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 #[derive(Deserialize, Serialize)]
 pub struct ConditionManager {
-    conds: HashSet<(String,Condition)>,
-    new_conds: HashSet<(String,Condition)>,
+    conds: HashSet<(ChrName,Condition)>,
+    new_conds: HashSet<(ChrName,Condition)>,
 }
 
 impl ConditionManager {
@@ -20,8 +20,8 @@ impl ConditionManager {
     pub fn new() -> Self {
         Self { conds: HashSet::new(), new_conds: HashSet::new() }
     }
-    pub fn add_condition(&mut self, character: &str, cond: Condition) {
-        let exists_ge = self.get_conditions(character)
+    pub fn add_condition(&mut self, character: ChrName, cond: Condition) {
+        let exists_ge = self.get_conditions(&character)
             .get(&cond)
             .is_some_and(|current| match (current,&cond) {
                 (Condition::Valued { cond: c1, level: l1, .. }, 
@@ -31,7 +31,7 @@ impl ConditionManager {
             });
 
         if !exists_ge {
-            self.conds.insert((character.to_string(), cond.clone()));
+            self.conds.insert((character.clone(), cond.clone()));
             // Since `new_conds` is only needed to avoid
             // ending `Until` conditions that were added to a
             // character during their own turn,
@@ -40,25 +40,25 @@ impl ConditionManager {
             // every new condition. It's not wrong to add every new condition
             // as long as we only check against those affecting the character
             // in question, but it's unnecessary to add them all.
-            self.new_conds.insert((character.to_string(), cond));
+            self.new_conds.insert((character, cond));
         }
     }
 
-    pub fn start_of_turn(&mut self, character: &str) {
-        self.handle_turn_event(&TurnEvent::StartOfNextTurn(character.to_string()));
+    pub fn start_of_turn(&mut self, character: ChrName) {
+        self.handle_turn_event(&TurnEvent::StartOfNextTurn(character));
         self.new_conds.clear();
     }
 
-    pub fn end_of_turn(&mut self, character: &str) -> Option<Damage> {
-        let damage = self.get_conditions(character).iter()
+    pub fn end_of_turn(&mut self, character: ChrName) -> Option<Damage> {
+        let damage = self.get_conditions(&character).iter()
             .filter_map(|cond| match cond {
                 Condition::Valued { cond: ValuedCondition::PersistentDamage(_), level, .. } => Some(*level),
                 _ => None
             })
             .sum();
 
-        self.handle_turn_event(&TurnEvent::EndOfCurrentTurn(character.to_string()));
-        self.handle_turn_event(&TurnEvent::EndOfNextTurn(character.to_string()));
+        self.handle_turn_event(&TurnEvent::EndOfCurrentTurn(character.clone()));
+        self.handle_turn_event(&TurnEvent::EndOfNextTurn(character));
 
         self.new_conds.clear();
 
@@ -157,19 +157,19 @@ impl ConditionManager {
         self.conds = new_conds;
     }
 
-    fn has_new_condition_on(&self, affected: &str, condition: &Condition) -> bool {
+    fn has_new_condition_on(&self, affected: &ChrName, condition: &Condition) -> bool {
         !self.new_conds.iter().any(|(a, b)| a == affected && b == condition)
     }
 
-    pub fn remove_condition(&mut self, character: &str, condition: &Condition) {
+    pub fn remove_condition(&mut self, character: &ChrName, condition: &Condition) {
         self.conds.retain(|(affected, cond)| affected != character || cond != condition);
     }
 
-    pub fn rename_character(&mut self, character: &str, new_name: &str) {
+    pub fn rename_character(&mut self, character: &ChrName, new_name: ChrName) {
         let conds = self.conds.clone().into_iter()
             .map(|(affected, cond)| {
-                if affected == character {
-                    (new_name.to_owned(), cond)
+                if &affected == character {
+                    (new_name.clone(), cond)
                 } else {
                     (affected, cond)
                 }
@@ -178,12 +178,12 @@ impl ConditionManager {
         self.conds = conds;
     }
 
-    pub fn remove_character(&mut self, character: &str) {
+    pub fn remove_character(&mut self, character: &ChrName) {
         self.conds.retain(|(affected, _)| affected != character);
     }
 
     #[must_use]
-    pub fn get_conditions<'a>(&'a self, character: &str) -> HashSet<&'a Condition> {
+    pub fn get_conditions<'a>(&'a self, character: &ChrName) -> HashSet<&'a Condition> {
         self.conds.iter()
             .filter(|(affected, _)| affected == character)
             .map(|(_, cond)| cond)
@@ -208,7 +208,7 @@ mod test {
             .term(NonValuedTerm::Until(jevil_turn_ends))
             .build();
 
-        cm.add_condition(&jevil.name, dazzled.clone());
+        cm.add_condition(jevil.name.clone(), dazzled.clone());
 
         assert!(cm.get_conditions(&jevil.name).contains(&dazzled));
     }
@@ -227,7 +227,7 @@ mod test {
             .term(NonValuedTerm::Until(jevil_turn_ends))
             .build();
 
-        cm.add_condition(&jevil.name, dazzled.clone());
+        cm.add_condition(jevil.name.clone(), dazzled.clone());
 
         assert!(!cm.get_conditions(&chris.name).contains(&dazzled));
     }
@@ -245,8 +245,8 @@ mod test {
             .term(NonValuedTerm::Until(jevil_turn_ends))
             .build();
 
-        cm.add_condition(&jevil.name, dazzled.clone());
-        cm.end_of_turn(&jevil.name);
+        cm.add_condition(jevil.name.clone(), dazzled.clone());
+        cm.end_of_turn(jevil.name.clone());
 
         assert!(cm.get_conditions(&jevil.name).contains(&dazzled));
     }
@@ -264,9 +264,9 @@ mod test {
             .term(NonValuedTerm::Until(jevil_turn_ends))
             .build();
 
-        cm.add_condition(&jevil.name, dazzled.clone());
-        cm.start_of_turn(&jevil.name);
-        cm.end_of_turn(&jevil.name);
+        cm.add_condition(jevil.name.clone(), dazzled.clone());
+        cm.start_of_turn(jevil.name.clone());
+        cm.end_of_turn(jevil.name.clone());
 
         assert!(!cm.get_conditions(&jevil.name).contains(&dazzled));
     }
@@ -285,8 +285,8 @@ mod test {
             .term(NonValuedTerm::Until(jevil_turn_ends))
             .build();
 
-        cm.add_condition(&chris.name, dazzled.clone());
-        cm.end_of_turn(&jevil.name);
+        cm.add_condition(chris.name.clone(), dazzled.clone());
+        cm.end_of_turn(jevil.name.clone());
 
         assert!(cm.get_conditions(&chris.name).contains(&dazzled));
     }
@@ -305,9 +305,9 @@ mod test {
             .term(NonValuedTerm::Until(jevil_turn_ends))
             .build();
 
-        cm.add_condition(&chris.name, dazzled.clone());
-        cm.start_of_turn(&jevil.name);
-        cm.end_of_turn(&jevil.name);
+        cm.add_condition(chris.name.clone(), dazzled.clone());
+        cm.start_of_turn(jevil.name.clone());
+        cm.end_of_turn(jevil.name.clone());
 
         assert!(!cm.get_conditions(&chris.name).contains(&dazzled));
     }

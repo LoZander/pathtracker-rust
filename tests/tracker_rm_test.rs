@@ -1,4 +1,4 @@
-use pathtracker_rust::{character::Chr, saver::NoSaver, tracker::{self, Tracker}};
+use pathtracker_rust::{character::{Chr, ChrName}, saver::NoSaver, tracker::{self, Tracker}};
 
 #[test]
 fn rm_chr_before_in_turn_preserves_in_turn() -> tracker::Result<()> {
@@ -12,7 +12,7 @@ fn rm_chr_before_in_turn_preserves_in_turn() -> tracker::Result<()> {
     t.end_turn()?;
 
     assert_eq!(Some(&Chr::builder("Hellen", 27, true).build()), t.get_in_turn());
-    t.rm_chr("Bucky")?;
+    t.rm_chr(&ChrName::new("Bucky"))?;
     assert_eq!(Some(&Chr::builder("Hellen", 27, true).build()), t.get_in_turn());
 
     Ok(())
@@ -30,7 +30,7 @@ fn rm_chr_after_in_turn_preserves_in_turn() -> tracker::Result<()> {
     t.end_turn()?;
 
     assert_eq!(Some(&Chr::builder("Hellen", 27, true).build()), t.get_in_turn());
-    t.rm_chr("Skelly Boy")?;
+    t.rm_chr(&ChrName::new("Skelly Boy"))?;
     assert_eq!(Some(&Chr::builder("Hellen", 27, true).build()), t.get_in_turn());
 
     Ok(())
@@ -45,7 +45,7 @@ fn rm_only_chr_in_turn_makes_no_one_in_turn() -> tracker::Result<()> {
     t.end_turn()?;
 
     assert_eq!(Some(&Chr::builder("Bucky", 30, true).build()), t.get_in_turn());
-    t.rm_chr("Bucky")?;
+    t.rm_chr(&ChrName::new("Bucky"))?;
     assert_eq!(None, t.get_in_turn());
 
     Ok(())
@@ -58,7 +58,7 @@ fn rm_only_chr_makes_no_one_in_turn() -> tracker::Result<()> {
     ]).build();
 
     assert_eq!(None, t.get_in_turn());
-    t.rm_chr("Bucky")?;
+    t.rm_chr(&ChrName::new("Bucky"))?;
     assert_eq!(None, t.get_in_turn());
 
     Ok(())
@@ -76,7 +76,7 @@ fn rm_in_turn_makes_it_next_ups_turn() -> tracker::Result<()> {
     t.end_turn()?;
 
     assert_eq!(Some(&Chr::builder("Hellen", 27, true).build()), t.get_in_turn());
-    t.rm_chr("Hellen")?;
+    t.rm_chr(&ChrName::new("Hellen"))?;
     assert_eq!(Some(&Chr::builder("Skelly Boy", 3, false).build()), t.get_in_turn());
 
     Ok(())
@@ -95,7 +95,7 @@ fn rm_last_when_its_turn_makes_it_top_of_round() -> tracker::Result<()> {
     t.end_turn()?;
 
     assert_eq!(Some(&Chr::builder("Skelly Boy", 3, false).build()), t.get_in_turn());
-    t.rm_chr("Skelly Boy")?;
+    t.rm_chr(&ChrName::new("Skelly Boy"))?;
     assert_eq!(Some(&Chr::builder("Bucky", 30, true).build()), t.get_in_turn());
 
     Ok(())
