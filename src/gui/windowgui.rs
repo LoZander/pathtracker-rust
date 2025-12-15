@@ -6,7 +6,7 @@ use errorwindow::ErrorWindow;
 use healthwindow::HealthWindow;
 use renamewindow::RenameWindow;
 
-use crate::{character::{Chr, ChrName}, saver::Saver, tracker::{self, Tracker}};
+use crate::{character::ChrName, saver::Saver, tracker::{self, Tracker}};
 
 mod condwindow;
 mod errorwindow;

@@ -3,14 +3,9 @@ use std::fmt::Display;
 use egui::{vec2, Context, Ui};
 
 use crate::{
-    character::{Chr, ChrName},
-    conditions::{
-        Condition, DamageType, NonValuedCondition, NonValuedTerm, TurnEvent, ValuedCondition,
-        ValuedTerm,
-    },
-    duration::Duration,
-    saver::Saver,
-    tracker::Tracker,
+    character::{Chr, ChrName}, conditions::{
+        CondFormat, Condition, DamageType, NonValuedCondition, NonValuedTerm, TurnEvent, ValuedCondition, ValuedTerm
+    }, duration::Duration, saver::Saver, settings, tracker::Tracker
 };
 
 #[derive(Debug, Clone)]
@@ -25,18 +20,19 @@ enum ConditionEntry {
     NonValued(NonValuedCondition),
 }
 
-impl Default for ConditionEntry {
-    fn default() -> Self {
-        Self::NonValued(NonValuedCondition::FlatFooted)
+impl ConditionEntry {
+    #[must_use]
+    pub fn to_string(&self, format: CondFormat) -> String {
+        match self {
+            Self::Valued(valued_condition) => valued_condition.to_string(format),
+            Self::NonValued(non_valued_condition) => non_valued_condition.to_string(format),
+        }
     }
 }
 
-impl Display for ConditionEntry {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Valued(valued_condition) => write!(f, "{valued_condition}"),
-            Self::NonValued(non_valued_condition) => write!(f, "{non_valued_condition}"),
-        }
+impl Default for ConditionEntry {
+    fn default() -> Self {
+        Self::NonValued(NonValuedCondition::FlatFooted)
     }
 }
 
@@ -116,6 +112,7 @@ impl CondWindow {
         //let frame = egui::Frame::default().inner_margin(egui::Margin::symmetric(20.0, 20.0));
         let open = &mut self.open;
         let data = &mut self.data;
+        let format = CondFormat::default().set_version(tracker.get_options().pf2e_version);
         if let Some(character) = data.character.clone() {
             let res = egui::Window::new(format!("{} Conditions", character))
                 .open(open)
@@ -124,9 +121,9 @@ impl CondWindow {
                     // Vec<RemoveResponse>) instead of a vec of both
                     let responses = ui
                         .horizontal(|ui| {
-                            let add = show_cond_section(ui, data, &character, tracker.get_chrs().to_vec());
+                            let add = show_cond_section(ui, data, &character, tracker.get_chrs().to_vec(), format);
 
-                            let mut remove = show_cond_list_section(tracker, ui, character);
+                            let mut remove = show_cond_list_section(tracker, ui, character, format);
 
                             if let Some(inner) = add {
                                 remove.push(inner);
@@ -159,12 +156,12 @@ impl CondWindow {
     }
 }
 
-fn show_cond_section(ui: &mut Ui, data: &mut Data, character: &ChrName, characters: Vec<Chr>) -> Option<Response> {
+fn show_cond_section(ui: &mut Ui, data: &mut Data, character: &ChrName, characters: Vec<Chr>, format: CondFormat) -> Option<Response> {
     ui.vertical(|ui| {
         ui.set_max_width(200.);
         ui.label("Add Condition:");
 
-        show_cond_selector(ui, data, character, characters);
+        show_cond_selector(ui, data, character, characters, format);
 
         ui.separator();
 
@@ -279,15 +276,15 @@ impl Default for TermEntry {
     }
 }
 
-fn show_cond_selector(ui: &mut Ui, data: &mut Data, character: &ChrName, characters: Vec<Chr>) {
+fn show_cond_selector(ui: &mut Ui, data: &mut Data, character: &ChrName, characters: Vec<Chr>, format: CondFormat) {
     ui.set_max_width(200.);
     egui::ComboBox::from_label("Condition")
-        .selected_text(format!("{}", data.selected))
-        .show_ui(ui, |ui| selectable_conds(ui, data));
+        .selected_text(format!("{}", data.selected.to_string(format)))
+        .show_ui(ui, |ui| selectable_conds(ui, data, format));
 
     if let ConditionEntry::Valued(cond) = data.selected {
         ui.horizontal(|ui| {
-            ui.label(cond.to_string());
+            ui.label(cond.to_string(format));
             let drag = egui::DragValue::new(&mut data.cond_value).range(0..=9);
             ui.add(drag);
         });
@@ -448,79 +445,81 @@ fn selectable_valued_term(ui: &mut Ui, data: &mut Data, term_entry: ValuedTermEn
     );
 }
 
-fn selectable_conds(ui: &mut Ui, data: &mut Data) {
-    selectable_valued_cond(ui, data, ValuedCondition::PersistentDamage(DamageType::Bleed));
-    selectable_valued_cond(ui, data, ValuedCondition::PersistentDamage(DamageType::Poison));
-    selectable_valued_cond(ui, data, ValuedCondition::PersistentDamage(DamageType::Piercing));
-    selectable_valued_cond(ui, data, ValuedCondition::PersistentDamage(DamageType::Bludgeoning));
-    selectable_valued_cond(ui, data, ValuedCondition::PersistentDamage(DamageType::Slashing));
-    selectable_valued_cond(ui, data, ValuedCondition::PersistentDamage(DamageType::Acid));
-    selectable_valued_cond(ui, data, ValuedCondition::PersistentDamage(DamageType::Cold));
-    selectable_valued_cond(ui, data, ValuedCondition::PersistentDamage(DamageType::Electricity));
-    selectable_valued_cond(ui, data, ValuedCondition::PersistentDamage(DamageType::Sonic));
-    selectable_valued_cond(ui, data, ValuedCondition::PersistentDamage(DamageType::Positive));
-    selectable_valued_cond(ui, data, ValuedCondition::PersistentDamage(DamageType::Negative));
-    selectable_valued_cond(ui, data, ValuedCondition::PersistentDamage(DamageType::Force));
-    selectable_valued_cond(ui, data, ValuedCondition::PersistentDamage(DamageType::Chaotic));
-    selectable_valued_cond(ui, data, ValuedCondition::PersistentDamage(DamageType::Evil));
-    selectable_valued_cond(ui, data, ValuedCondition::PersistentDamage(DamageType::Good));
-    selectable_valued_cond(ui, data, ValuedCondition::PersistentDamage(DamageType::Lawful));
-    selectable_valued_cond(ui, data, ValuedCondition::Clumsy);
-    selectable_valued_cond(ui, data, ValuedCondition::Doomed);
-    selectable_valued_cond(ui, data, ValuedCondition::Drained);
-    selectable_valued_cond(ui, data, ValuedCondition::Dying);
-    selectable_valued_cond(ui, data, ValuedCondition::Enfeebled);
-    selectable_valued_cond(ui, data, ValuedCondition::Frightened);
-    selectable_valued_cond(ui, data, ValuedCondition::Sickened);
-    selectable_valued_cond(ui, data, ValuedCondition::Slowed);
-    selectable_valued_cond(ui, data, ValuedCondition::Stunned);
-    selectable_valued_cond(ui, data, ValuedCondition::Stupified);
-    selectable_valued_cond(ui, data, ValuedCondition::Wounded);
-    selectable_nonvalued_cond(ui, data, NonValuedCondition::Blinded);
-    selectable_nonvalued_cond(ui, data, NonValuedCondition::Broken);
-    selectable_nonvalued_cond(ui, data, NonValuedCondition::Concealed);
-    selectable_nonvalued_cond(ui, data, NonValuedCondition::Confused);
-    selectable_nonvalued_cond(ui, data, NonValuedCondition::Controlled);
-    selectable_nonvalued_cond(ui, data, NonValuedCondition::Dazzled);
-    selectable_nonvalued_cond(ui, data, NonValuedCondition::Deafened);
-    selectable_nonvalued_cond(ui, data, NonValuedCondition::Encumbered);
-    selectable_nonvalued_cond(ui, data, NonValuedCondition::Fascinated);
-    selectable_nonvalued_cond(ui, data, NonValuedCondition::Fatigued);
-    selectable_nonvalued_cond(ui, data, NonValuedCondition::FlatFooted);
-    selectable_nonvalued_cond(ui, data, NonValuedCondition::Fleeing);
-    selectable_nonvalued_cond(ui, data, NonValuedCondition::Friendly);
-    selectable_nonvalued_cond(ui, data, NonValuedCondition::Grabbed);
-    selectable_nonvalued_cond(ui, data, NonValuedCondition::Helpful);
-    selectable_nonvalued_cond(ui, data, NonValuedCondition::Hidden);
-    selectable_nonvalued_cond(ui, data, NonValuedCondition::Hostile);
-    selectable_nonvalued_cond(ui, data, NonValuedCondition::Immobilized);
-    selectable_nonvalued_cond(ui, data, NonValuedCondition::Indifferent);
-    selectable_nonvalued_cond(ui, data, NonValuedCondition::Invisible);
-    selectable_nonvalued_cond(ui, data, NonValuedCondition::Observed);
-    selectable_nonvalued_cond(ui, data, NonValuedCondition::Paralyzed);
-    selectable_nonvalued_cond(ui, data, NonValuedCondition::Petrified);
-    selectable_nonvalued_cond(ui, data, NonValuedCondition::Prone);
-    selectable_nonvalued_cond(ui, data, NonValuedCondition::Quickened);
-    selectable_nonvalued_cond(ui, data, NonValuedCondition::Restrained);
-    selectable_nonvalued_cond(ui, data, NonValuedCondition::Unconscious);
-    selectable_nonvalued_cond(ui, data, NonValuedCondition::Undetected);
-    selectable_nonvalued_cond(ui, data, NonValuedCondition::Unfriendly);
-    selectable_nonvalued_cond(ui, data, NonValuedCondition::Unnoticed);
+fn selectable_conds(ui: &mut Ui, data: &mut Data, format: CondFormat) {
+    selectable_valued_cond(ui, data, format, ValuedCondition::PersistentDamage(DamageType::Bleed));
+    selectable_valued_cond(ui, data, format, ValuedCondition::PersistentDamage(DamageType::Poison));
+    selectable_valued_cond(ui, data, format, ValuedCondition::PersistentDamage(DamageType::Piercing));
+    selectable_valued_cond(ui, data, format, ValuedCondition::PersistentDamage(DamageType::Bludgeoning));
+    selectable_valued_cond(ui, data, format, ValuedCondition::PersistentDamage(DamageType::Slashing));
+    selectable_valued_cond(ui, data, format, ValuedCondition::PersistentDamage(DamageType::Acid));
+    selectable_valued_cond(ui, data, format, ValuedCondition::PersistentDamage(DamageType::Cold));
+    selectable_valued_cond(ui, data, format, ValuedCondition::PersistentDamage(DamageType::Electricity));
+    selectable_valued_cond(ui, data, format, ValuedCondition::PersistentDamage(DamageType::Sonic));
+    selectable_valued_cond(ui, data, format, ValuedCondition::PersistentDamage(DamageType::Positive));
+    selectable_valued_cond(ui, data, format, ValuedCondition::PersistentDamage(DamageType::Negative));
+    selectable_valued_cond(ui, data, format, ValuedCondition::PersistentDamage(DamageType::Force));
+    if let settings::Pf2eVersion::Old = format.get_version() {
+        selectable_valued_cond(ui, data, format, ValuedCondition::PersistentDamage(DamageType::Chaotic));
+        selectable_valued_cond(ui, data, format, ValuedCondition::PersistentDamage(DamageType::Evil));
+        selectable_valued_cond(ui, data, format, ValuedCondition::PersistentDamage(DamageType::Good));
+        selectable_valued_cond(ui, data, format, ValuedCondition::PersistentDamage(DamageType::Lawful));
+    }
+    selectable_valued_cond(ui, data, format, ValuedCondition::Clumsy);
+    selectable_valued_cond(ui, data, format, ValuedCondition::Doomed);
+    selectable_valued_cond(ui, data, format, ValuedCondition::Drained);
+    selectable_valued_cond(ui, data, format, ValuedCondition::Dying);
+    selectable_valued_cond(ui, data, format, ValuedCondition::Enfeebled);
+    selectable_valued_cond(ui, data, format, ValuedCondition::Frightened);
+    selectable_valued_cond(ui, data, format, ValuedCondition::Sickened);
+    selectable_valued_cond(ui, data, format, ValuedCondition::Slowed);
+    selectable_valued_cond(ui, data, format, ValuedCondition::Stunned);
+    selectable_valued_cond(ui, data, format, ValuedCondition::Stupified);
+    selectable_valued_cond(ui, data, format, ValuedCondition::Wounded);
+    selectable_nonvalued_cond(ui, data, format, NonValuedCondition::Blinded);
+    selectable_nonvalued_cond(ui, data, format, NonValuedCondition::Broken);
+    selectable_nonvalued_cond(ui, data, format, NonValuedCondition::Concealed);
+    selectable_nonvalued_cond(ui, data, format, NonValuedCondition::Confused);
+    selectable_nonvalued_cond(ui, data, format, NonValuedCondition::Controlled);
+    selectable_nonvalued_cond(ui, data, format, NonValuedCondition::Dazzled);
+    selectable_nonvalued_cond(ui, data, format, NonValuedCondition::Deafened);
+    selectable_nonvalued_cond(ui, data, format, NonValuedCondition::Encumbered);
+    selectable_nonvalued_cond(ui, data, format, NonValuedCondition::Fascinated);
+    selectable_nonvalued_cond(ui, data, format, NonValuedCondition::Fatigued);
+    selectable_nonvalued_cond(ui, data, format, NonValuedCondition::FlatFooted);
+    selectable_nonvalued_cond(ui, data, format, NonValuedCondition::Fleeing);
+    selectable_nonvalued_cond(ui, data, format, NonValuedCondition::Friendly);
+    selectable_nonvalued_cond(ui, data, format, NonValuedCondition::Grabbed);
+    selectable_nonvalued_cond(ui, data, format, NonValuedCondition::Helpful);
+    selectable_nonvalued_cond(ui, data, format, NonValuedCondition::Hidden);
+    selectable_nonvalued_cond(ui, data, format, NonValuedCondition::Hostile);
+    selectable_nonvalued_cond(ui, data, format, NonValuedCondition::Immobilized);
+    selectable_nonvalued_cond(ui, data, format, NonValuedCondition::Indifferent);
+    selectable_nonvalued_cond(ui, data, format, NonValuedCondition::Invisible);
+    selectable_nonvalued_cond(ui, data, format, NonValuedCondition::Observed);
+    selectable_nonvalued_cond(ui, data, format, NonValuedCondition::Paralyzed);
+    selectable_nonvalued_cond(ui, data, format, NonValuedCondition::Petrified);
+    selectable_nonvalued_cond(ui, data, format, NonValuedCondition::Prone);
+    selectable_nonvalued_cond(ui, data, format, NonValuedCondition::Quickened);
+    selectable_nonvalued_cond(ui, data, format, NonValuedCondition::Restrained);
+    selectable_nonvalued_cond(ui, data, format, NonValuedCondition::Unconscious);
+    selectable_nonvalued_cond(ui, data, format, NonValuedCondition::Undetected);
+    selectable_nonvalued_cond(ui, data, format, NonValuedCondition::Unfriendly);
+    selectable_nonvalued_cond(ui, data, format, NonValuedCondition::Unnoticed);
 }
 
-fn selectable_nonvalued_cond(ui: &mut Ui, data: &mut Data, cond: NonValuedCondition) {
+fn selectable_nonvalued_cond(ui: &mut Ui, data: &mut Data, format: CondFormat, cond: NonValuedCondition) {
     ui.selectable_value(
         &mut data.selected,
         ConditionEntry::NonValued(cond),
-        cond.to_string(),
+        cond.to_string(format),
     );
 }
 
-fn selectable_valued_cond(ui: &mut Ui, data: &mut Data, cond: ValuedCondition) {
+fn selectable_valued_cond(ui: &mut Ui, data: &mut Data, format: CondFormat, cond: ValuedCondition) {
     ui.selectable_value(
         &mut data.selected,
         ConditionEntry::Valued(cond),
-        cond.to_string(),
+        cond.to_string(format),
     );
 }
 
@@ -528,6 +527,7 @@ fn show_cond_list_section(
     tracker: &Tracker<impl Saver>,
     ui: &mut Ui,
     character: ChrName,
+    format: CondFormat,
 ) -> Vec<Response> {
     ui.group(|ui| {
         ui.set_min_size(vec2(100.0, 100.0));
@@ -543,7 +543,7 @@ fn show_cond_list_section(
                 .filter(|&cond| {
                     let (_, remove) = egui::Sides::new().show(
                         ui,
-                        |ui| ui.label(cond.to_long_string()),
+                        |ui| ui.label(cond.to_string(format)),
                         |ui| ui.button("x").clicked(),
                     );
                     remove

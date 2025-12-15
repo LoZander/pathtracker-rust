@@ -2,7 +2,7 @@ use std::io;
 use const_format::concatcp;
 use help::Topic;
 use thiserror::Error;
-use crate::{character::{Chr, ChrName, Health}, conditions::Condition, saver::Saver, tracker::{self, Tracker}};
+use crate::{character::{Chr, ChrName, Health}, conditions::{CondFormat, Condition}, saver::Saver, tracker::{self, Tracker}};
 
 mod parser;
 mod help;
@@ -50,11 +50,12 @@ pub fn run<S: Saver>(mut t: Tracker<S>) -> Result<(), Error> {
     let mut buff = String::new();
     let stdin = io::stdin();
     let mut error: Option<Error> = None;
+    let format = CondFormat::default().set_version(t.get_options().pf2e_version);
     loop {
         println!("{PROLOG}");
         for chr in t.get_chrs() {
             let mut conds: Vec<String> = t.get_conditions(&chr.name).into_iter()
-                .map(ToString::to_string)
+                .map(|c| c.to_string(format))
                 .collect();
             conds.sort();
             let conds_string = conds

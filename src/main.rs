@@ -9,6 +9,7 @@ fn main() {
     let mut t: Tracker<FileSaver> = match Tracker::load(&FileSaver, "auto.save") {
         Ok(t) => t,
         Err(tracker::Error::LoadError(saver::Error::LoadIOError(_, _))) => Tracker::default(),
+        Err(tracker::Error::LoadError(saver::Error::LoadMissingSave(_))) => Tracker::default(),
         Err(e) => panic!("{e:?}")
     };
 
