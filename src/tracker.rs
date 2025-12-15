@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use thiserror::Error;
 
-use crate::{character::{Chr, ChrName}, conditions::{Condition, condition_manager::ConditionManager}, saver::{self, Saver}};
+use crate::{character::{Chr, ChrName}, conditions::{Condition, condition_manager::ConditionManager}, saver::{self, Saver}, settings::Settings};
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -45,7 +45,8 @@ pub struct Tracker<S: Saver> {
     chrs: Vec<Chr>,
     in_turn_index: Option<usize>,
     saver: S,
-    cm: ConditionManager
+    cm: ConditionManager,
+    options: Settings,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -53,7 +54,8 @@ pub struct Tracker<S: Saver> {
 struct TrackerData {
     chrs: Vec<Chr>,
     in_turn_index: Option<usize>,
-    cm: ConditionManager
+    cm: ConditionManager,
+    options: Settings,
 }
 
 impl<S: Saver> From<Tracker<S>> for TrackerData {
@@ -61,7 +63,8 @@ impl<S: Saver> From<Tracker<S>> for TrackerData {
         Self {
             chrs: value.chrs,
             in_turn_index: value.in_turn_index,
-            cm: value.cm
+            cm: value.cm,
+            options: value.options
         }
     }
 }
@@ -72,7 +75,8 @@ impl<S: Saver> From<TrackerData> for Tracker<S> {
             chrs: value.chrs,
             in_turn_index: value.in_turn_index,
             saver: S::default(),
-            cm: value.cm
+            cm: value.cm,
+            options: value.options
         }
     }
 }
@@ -128,7 +132,8 @@ impl<S: Saver> Builder<S> {
             chrs: self.chrs,
             in_turn_index: self.in_turn_index,
             saver: self.saver,
-            cm: self.cm
+            cm: self.cm,
+            options: Settings::default()
         }
     }
 }
@@ -139,6 +144,10 @@ impl<S: Saver> Tracker<S> {
     #[must_use]
     pub fn builder() -> Builder<S> {
         Builder::new(S::default())
+    }
+
+    pub fn get_options(&self) -> Settings {
+        self.options
     }
 
     /// Returns a reference to the character [`Chr`] with the given [`name`],
@@ -170,7 +179,6 @@ impl<S: Saver> Tracker<S> {
             if let Some(damage) = damage {
                 // It can only fail if there is no character by the name,
                 // which there naturally will always be in this if body
-                println!("P. DAMAGE {damage} on {chr:?}");
                 self.damage(&chr.name, damage.into())?;
             }
         }

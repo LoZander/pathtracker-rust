@@ -1,9 +1,42 @@
 use serde::{Deserialize, Serialize};
 use std::{fmt::Display, hash::Hash};
 
-use crate::{character::ChrName, duration::Duration};
+use crate::{character::ChrName, duration::Duration, settings::Pf2eVersion};
 
 pub mod condition_manager;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
+#[derive(Serialize, Deserialize)]
+pub enum CondDetail {
+    #[default]
+    Long,
+    Short
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
+#[derive(Serialize, Deserialize)]
+pub struct CondFormat {
+    detail: CondDetail,
+    version: Pf2eVersion
+}
+
+impl CondFormat {
+    #[must_use]
+    pub const fn set_version(mut self, v: Pf2eVersion) -> Self {
+        self.version = v;
+        self
+    }
+
+    #[must_use]
+    pub const fn get_version(&self) -> Pf2eVersion {
+        self.version
+    }
+
+    #[must_use]
+    pub const fn get_detail(&self) -> CondDetail {
+        self.detail
+    }
+}
 
 #[derive(Debug, Clone)]
 #[derive(Serialize, Deserialize)]
@@ -20,18 +53,24 @@ impl Condition {
     }
 
     #[must_use]
-    pub fn to_long_string(&self) -> String {
+    pub fn to_string(&self, format: CondFormat) -> String {
         match self {
-            Self::Valued { cond, term, level } => format!("{cond} {level} {term}"),
-            Self::NonValued { cond, term } => format!("{cond} {term}"),
-        }
-    }
-
-    #[must_use]
-    pub fn to_short_string(&self) -> String {
-        match self {
-            Self::Valued { cond, term, level: _ } => format!("{cond} {}", term.to_short_string()),
-            Self::NonValued { cond, term } => format!("{cond} {}", term.to_short_string())
+            Self::Valued { cond, term, level } => {
+                match format {
+                    CondFormat { detail: CondDetail::Short, version: Pf2eVersion::Remastered } => format!("{} {level} {}", cond.to_remas_string(), term.to_short_string()),
+                    CondFormat { detail: CondDetail::Long, version: Pf2eVersion::Remastered } => format!("{} {level} {}", cond.to_remas_string(), term.to_long_string()),
+                    CondFormat { detail: CondDetail::Short, version: Pf2eVersion::Old } => format!("{} {level} {}", cond.to_old_string(), term.to_short_string()),
+                    CondFormat { detail: CondDetail::Long, version: Pf2eVersion::Old } => format!("{} {level} {}", cond.to_old_string(), term.to_long_string()),
+                }
+            }
+            Self::NonValued { cond, term } => {
+                match format {
+                    CondFormat { detail: CondDetail::Short, version: Pf2eVersion::Remastered } => format!("{} {}", cond.to_remas_string(), term.to_short_string()),
+                    CondFormat { detail: CondDetail::Long, version: Pf2eVersion::Remastered } => format!("{} {}", cond.to_remas_string(), term.to_long_string()),
+                    CondFormat { detail: CondDetail::Short, version: Pf2eVersion::Old } => format!("{} {}", cond.to_old_string(), term.to_short_string()),
+                    CondFormat { detail: CondDetail::Long, version: Pf2eVersion::Old } => format!("{} {}", cond.to_old_string(), term.to_long_string()),
+                }
+            }
         }
     }
 }
@@ -53,15 +92,6 @@ impl Hash for Condition {
         match self {
             Self::Valued { cond, .. } => cond.hash(state),
             Self::NonValued { cond, .. } => cond.hash(state),
-        }
-    }
-}
-
-impl Display for Condition {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Valued { cond, term, level } => write!(f, "{cond} {level} {term}"),
-            Self::NonValued { cond, term } => write!(f, "{cond} {term}"),
         }
     }
 }
@@ -115,16 +145,6 @@ impl NonValuedTerm {
     }
 }
 
-impl Display for NonValuedTerm {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Manual => write!(f, ""),
-            Self::For(dur) => write!(f, "for {} turns", dur.in_turns()),
-            Self::Until(event) => write!(f, "until {event}"),
-        }
-    }
-}
-
 #[derive(Debug, Clone, Default)]
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 #[derive(Serialize, Deserialize, Hash)]
@@ -171,7 +191,6 @@ impl Display for ValuedTerm {
 }
 
 
-
 #[derive(Debug, Clone, Copy)]
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 #[derive(Serialize, Deserialize, Hash)]
@@ -190,21 +209,48 @@ pub enum ValuedCondition {
     Wounded,
 }
 
-impl Display for ValuedCondition {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl ValuedCondition {
+    #[must_use]
+    pub fn to_string(self, format: CondFormat) -> String {
+        match format.version {
+            Pf2eVersion::Old => self.to_old_string(),
+            Pf2eVersion::Remastered => self.to_remas_string(),
+        }
+    }
+
+    #[must_use]
+    pub fn to_old_string(self) -> String {
         match self {
-            Self::PersistentDamage(ty) => write!(f, "p. {ty}"),
-            Self::Clumsy => write!(f, "clumsy"),
-            Self::Doomed => write!(f, "doomed"),
-            Self::Drained => write!(f, "drained"),
-            Self::Dying => write!(f, "dying"),
-            Self::Enfeebled => write!(f, "enfeebled"),
-            Self::Frightened => write!(f, "frightened"),
-            Self::Sickened => write!(f, "sickened"),
-            Self::Slowed => write!(f, "slowed"),
-            Self::Stunned => write!(f, "stunned"),
-            Self::Stupified => write!(f, "stupified"),
-            Self::Wounded => write!(f, "wounded"),
+            Self::PersistentDamage(ty) => format!("p. {}", ty.to_old_string()),
+            Self::Clumsy => "clumsy".into(),
+            Self::Doomed => "doomed".into(),
+            Self::Drained => "drained".into(),
+            Self::Dying => "dying".into(),
+            Self::Enfeebled => "enfeebled".into(),
+            Self::Frightened => "frightened".into(),
+            Self::Sickened => "sickened".into(),
+            Self::Slowed => "slowed".into(),
+            Self::Stunned => "stunned".into(),
+            Self::Stupified => "stupified".into(),
+            Self::Wounded => "wounded".into(),
+        }
+    }
+
+    #[must_use]
+    pub fn to_remas_string(self) -> String {
+        match self {
+            Self::PersistentDamage(ty) => format!("p. {}", ty.to_remas_string()),
+            Self::Clumsy => "clumsy".into(),
+            Self::Doomed => "doomed".into(),
+            Self::Drained => "drained".into(),
+            Self::Dying => "dying".into(),
+            Self::Enfeebled => "enfeebled".into(),
+            Self::Frightened => "frightened".into(),
+            Self::Sickened => "sickened".into(),
+            Self::Slowed => "slowed".into(),
+            Self::Stunned => "stunned".into(),
+            Self::Stupified => "stupified".into(),
+            Self::Wounded => "wounded".into(),
         }
     }
 }
@@ -245,43 +291,87 @@ pub enum NonValuedCondition {
     Unnoticed
 }
 
-impl Display for NonValuedCondition {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Blinded => write!(f, "blinded"),
-            Self::Broken => write!(f, "broken"),
-            Self::Concealed => write!(f, "concealed"),
-            Self::Confused => write!(f, "confused"),
-            Self::Controlled => write!(f, "controlled"),
-            Self::Dazzled => write!(f, "dazzled"),
-            Self::Deafened => write!(f, "deafened"),
-            Self::Encumbered => write!(f, "encumbered"),
-            Self::Fascinated => write!(f, "fascinated"),
-            Self::Fatigued => write!(f, "fatigued"),
-            Self::FlatFooted => write!(f, "flat-footed"),
-            Self::Fleeing => write!(f, "fleeing"),
-            Self::Friendly => write!(f, "friendly"),
-            Self::Grabbed => write!(f, "grabbed"),
-            Self::Helpful => write!(f, "helpful"),
-            Self::Hidden => write!(f, "hidden"),
-            Self::Hostile => write!(f, "hostile"),
-            Self::Immobilized => write!(f, "immobilized"),
-            Self::Indifferent => write!(f, "indifferent"),
-            Self::Invisible => write!(f, "invisible"),
-            Self::Observed => write!(f, "observed"),
-            Self::Paralyzed => write!(f, "paralyzed"),
-            Self::Petrified => write!(f, "petrified"),
-            Self::Prone => write!(f, "prone"),
-            Self::Quickened => write!(f, "quickened"),
-            Self::Restrained => write!(f, "restrained"),
-            Self::Unconscious => write!(f, "unconscious"),
-            Self::Undetected => write!(f, "undetected"),
-            Self::Unfriendly => write!(f, "unfriendly"),
-            Self::Unnoticed => write!(f, "unnoticed"),
+impl NonValuedCondition {
+    #[must_use]
+    pub fn to_string(self, format: CondFormat) -> String {
+        match format.version {
+            Pf2eVersion::Old => self.to_old_string(),
+            Pf2eVersion::Remastered => self.to_remas_string(),
         }
     }
-}
 
+    #[must_use]
+    fn to_old_string(self) -> String {
+        match self {
+            Self::Blinded => "blinded",
+            Self::Broken => "broken",
+            Self::Concealed => "concealed",
+            Self::Confused => "confused",
+            Self::Controlled => "controlled",
+            Self::Dazzled => "dazzled",
+            Self::Deafened => "deafened",
+            Self::Encumbered => "encumbered",
+            Self::Fascinated => "fascinated",
+            Self::Fatigued => "fatigued",
+            Self::FlatFooted => "flat-footed",
+            Self::Fleeing => "fleeing",
+            Self::Friendly => "friendly",
+            Self::Grabbed => "grabbed",
+            Self::Helpful => "helpful",
+            Self::Hidden => "hidden",
+            Self::Hostile => "hostile",
+            Self::Immobilized => "immobilized",
+            Self::Indifferent => "indifferent",
+            Self::Invisible => "invisible",
+            Self::Observed => "observed",
+            Self::Paralyzed => "paralyzed",
+            Self::Petrified => "petrified",
+            Self::Prone => "prone",
+            Self::Quickened => "quickened",
+            Self::Restrained => "restrained",
+            Self::Unconscious => "unconscious",
+            Self::Undetected => "undetected",
+            Self::Unfriendly => "unfriendly",
+            Self::Unnoticed => "unnoticed",
+        }.into()
+    }
+
+    #[must_use]
+    fn to_remas_string(self) -> String {
+        match self {
+            Self::Blinded => "blinded",
+            Self::Broken => "broken",
+            Self::Concealed => "concealed",
+            Self::Confused => "confused",
+            Self::Controlled => "controlled",
+            Self::Dazzled => "dazzled",
+            Self::Deafened => "deafened",
+            Self::Encumbered => "encumbered",
+            Self::Fascinated => "fascinated",
+            Self::Fatigued => "fatigued",
+            Self::FlatFooted => "off-guard",
+            Self::Fleeing => "fleeing",
+            Self::Friendly => "friendly",
+            Self::Grabbed => "grabbed",
+            Self::Helpful => "helpful",
+            Self::Hidden => "hidden",
+            Self::Hostile => "hostile",
+            Self::Immobilized => "immobilized",
+            Self::Indifferent => "indifferent",
+            Self::Invisible => "invisible",
+            Self::Observed => "observed",
+            Self::Paralyzed => "paralyzed",
+            Self::Petrified => "petrified",
+            Self::Prone => "prone",
+            Self::Quickened => "quickened",
+            Self::Restrained => "restrained",
+            Self::Unconscious => "unconscious",
+            Self::Undetected => "undetected",
+            Self::Unfriendly => "unfriendly",
+            Self::Unnoticed => "unnoticed",
+        }.into()
+    }
+}
 
 #[derive(Debug, Clone, Copy, Default)]
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
@@ -306,29 +396,51 @@ pub enum DamageType {
     Lawful
 }
 
-impl Display for DamageType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl DamageType {
+    #[must_use]
+    pub fn to_old_string(self) -> String {
         match self {
-            Self::Bleed => write!(f, "bleed"),
-            Self::Poison => write!(f, "poison"),
-            Self::Piercing => write!(f, "piercing"),
-            Self::Bludgeoning => write!(f, "bludgeoning"),
-            Self::Slashing => write!(f, "slashing"),
-            Self::Acid => write!(f, "acid"),
-            Self::Cold => write!(f, "cold"),
-            Self::Electricity => write!(f, "electricity"),
-            Self::Sonic => write!(f, "sonic"),
-            Self::Positive => write!(f, "positive"),
-            Self::Negative => write!(f, "negative"),
-            Self::Force => write!(f, "force"),
-            Self::Chaotic => write!(f, "chaotic"),
-            Self::Evil => write!(f, "evil"),
-            Self::Good => write!(f, "good"),
-            Self::Lawful => write!(f, "lawful"),
-        }
+            Self::Bleed => "bleed",
+            Self::Poison => "poison",
+            Self::Piercing => "piercing",
+            Self::Bludgeoning => "bludgeoning",
+            Self::Slashing => "slashing",
+            Self::Acid => "acid",
+            Self::Cold => "cold",
+            Self::Electricity => "electricity",
+            Self::Sonic => "sonic",
+            Self::Positive => "positive",
+            Self::Negative => "negative",
+            Self::Force => "force",
+            Self::Chaotic => "chaotic",
+            Self::Evil => "evil",
+            Self::Good => "good",
+            Self::Lawful => "lawful",
+        }.into()
+    }
+
+    #[must_use]
+    pub fn to_remas_string(self) -> String {
+        match self {
+            Self::Bleed => "bleed",
+            Self::Poison => "poison",
+            Self::Piercing => "piercing",
+            Self::Bludgeoning => "bludgeoning",
+            Self::Slashing => "slashing",
+            Self::Acid => "acid",
+            Self::Cold => "cold",
+            Self::Electricity => "clectricity",
+            Self::Sonic => "sonic",
+            Self::Positive => "vitality",
+            Self::Negative => "void",
+            Self::Force => "force",
+            Self::Chaotic => "chaotic?",
+            Self::Evil => "evil?",
+            Self::Good => "good?",
+            Self::Lawful => "lawful?",
+        }.into()
     }
 }
-
 
 pub struct Empty;
 pub trait CondType {}
