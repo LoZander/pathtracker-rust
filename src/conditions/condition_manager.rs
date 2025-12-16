@@ -4,10 +4,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::{character::ChrName, duration::Duration};
 
-use super::{Condition, NonValuedTerm, TurnEvent, ValuedCondition, ValuedTerm};
+use super::{Condition, NonValuedCondition, NonValuedTerm, TurnEvent, ValuedCondition, ValuedTerm};
 
 pub type Damage = u8;
 
+/// Manages the conditions of characters in the tracker.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 #[derive(Deserialize, Serialize)]
 pub struct ConditionManager {
@@ -44,11 +45,49 @@ impl ConditionManager {
         }
     }
 
+    /// Signals the start of a character's turn to the condition manager.
     pub fn start_of_turn(&mut self, character: ChrName) {
         self.handle_turn_event(&TurnEvent::StartOfNextTurn(character));
         self.new_conds.clear();
     }
 
+    /// Removes a given condition from a specific character if they have it.
+    ///
+    /// If the character does not have the condition, nothing changes.
+    pub fn remove_condition(&mut self, character: &ChrName, condition: &Condition) {
+        self.conds.retain(|(affected, cond)| affected != character || cond != condition);
+    }
+
+    /// Renames a character in the condition manager
+    #[allow(clippy::needless_pass_by_value)]
+    pub fn rename_character(&mut self, character: &ChrName, new_name: ChrName) {
+        let conds = self.conds.clone().into_iter()
+            .map(|(affected, cond)| {
+                if affected == character {
+                    (new_name.clone(), cond)
+                } else {
+                    (affected, cond)
+                }
+            })
+            .collect();
+        self.conds = conds;
+    }
+
+    /// Removes a character from the condition manager.
+    pub fn remove_character(&mut self, character: &ChrName) {
+        self.conds.retain(|(affected, _)| affected != character);
+    }
+
+    /// Returns the given character's conditions.
+    #[must_use]
+    pub fn get_conditions<'a>(&'a self, character: &ChrName) -> HashSet<&'a Condition> {
+        self.conds.iter()
+            .filter(|(affected, _)| affected == character)
+            .map(|(_, cond)| cond)
+            .collect()
+    }
+
+    /// Signals the end of a character's turn to the condition manager.
     pub fn end_of_turn(&mut self, character: ChrName) -> Option<Damage> {
         let damage = self.get_conditions(&character).iter()
             .filter_map(|cond| match cond {
@@ -73,121 +112,95 @@ impl ConditionManager {
             .conds
             .clone()
             .into_iter()
-            .filter_map(|(affected, cond)| {
-                match (affected, cond) {
-                    (affected, condition @ Condition::Valued { term: ValuedTerm::For(dur), cond, level }) => {
-                        match &event {
-                            TurnEvent::EndOfNextTurn(c) if c == &affected => {
-                                match dur.in_turns() {
-                                    0 | 1 => None,
-                                    n => {
-                                        let new_dur = Duration::from_turns(n - 1);
-                                        let new_cond = Condition::Valued {
-                                            term: ValuedTerm::For(new_dur),
-                                            level,
-                                            cond,
-                                        };
-                                        Some((affected, new_cond))
-                                    }
-                                }
-                            },
-                            _ => Some((affected, condition))
-                        }
-                    },
-                    (affected, condition @ Condition::NonValued { term: NonValuedTerm::For(dur), cond }) => {
-                        match &event {
-                            TurnEvent::EndOfNextTurn(c) if c == &affected => {
-                                match dur.in_turns() {
-                                    0 | 1 => None,
-                                    n => {
-                                        let new_dur = Duration::from_turns(n - 1);
-                                        let new_cond = Condition::NonValued {
-                                            term: NonValuedTerm::For(new_dur),
-                                            cond,
-                                        };
-                                        Some((affected, new_cond))
-                                    }
-                                }
-                            },
-                            _ => Some((affected, condition))
-                        }
-                    }
-                    (affected, ref condition @ 
-                        (Condition::Valued { term: ValuedTerm::Until(ref e @ TurnEvent::EndOfCurrentTurn(_)), .. } |
-                        Condition::NonValued { term: NonValuedTerm::Until(ref e @ TurnEvent::EndOfCurrentTurn(_)), .. }))
-                    if e == event => None,
-                    (affected, ref condition @
-                        (Condition::Valued { term: ValuedTerm::Until(ref e), .. } |
-                        Condition::NonValued { term: NonValuedTerm::Until(ref e), .. }))
-                    if e == event && self.has_new_condition_on(&affected, condition) => None,
-                    (affected, Condition::Valued { term: ValuedTerm::Reduced(e @ TurnEvent::EndOfCurrentTurn(_), reduction), level, cond })
-                    if &e == event => {
-                        let new_level = level.saturating_sub(reduction);
-                        match new_level {
-                            0 => None,
-                            level => {
-                                let new_cond = Condition::Valued { 
-                                    cond, 
-                                    term: ValuedTerm::Reduced(e, reduction), 
-                                    level 
-                                };
-                                Some((affected, new_cond))
-                            }
-                        }
-                    },
-                    (affected, Condition::Valued { term: ValuedTerm::Reduced(e, reduction), level, cond })
-                    if &e == event && self.has_new_condition_on(&affected, &Condition::Valued { term: ValuedTerm::Reduced(e.clone(), reduction), level, cond }) => {
-                        let new_level = level.saturating_sub(reduction);
-                        match new_level {
-                            0 => None,
-                            level => {
-                                let new_cond = Condition::Valued { 
-                                    cond, 
-                                    term: ValuedTerm::Reduced(e, reduction), 
-                                    level 
-                                };
-                                Some((affected, new_cond))
-                            }
-                        }
-                    },
-                    (affected, cond) => Some((affected, cond))
-                }
-            })
+            .filter_map(|(affected, cond)| self.cond_step(event, affected, cond))
             .collect();
         self.conds = new_conds;
+    }
+
+    fn cond_step(&self, event: &TurnEvent, affected: ChrName, cond: Condition) -> Option<(ChrName, Condition)> {
+        match cond {
+            Condition::Valued { term: ValuedTerm::For(dur), cond, level } =>
+                cond_step_for_valued(event, affected, dur, cond, level),
+            Condition::NonValued { term: NonValuedTerm::For(dur), cond } =>
+                cond_step_for_nonvalued(event, affected, dur, cond),
+            Condition::Valued { term: ValuedTerm::Until(ref e @ TurnEvent::EndOfCurrentTurn(_)), .. } |
+            Condition::NonValued { term: NonValuedTerm::Until(ref e @ TurnEvent::EndOfCurrentTurn(_)), .. }
+            if e == event =>
+                None,
+            ref condition @
+            (Condition::Valued { term: ValuedTerm::Until(ref e), .. } |
+            Condition::NonValued { term: NonValuedTerm::Until(ref e), .. })
+            if e == event && self.has_new_condition_on(&affected, condition) => 
+                None,
+            Condition::Valued { term: ValuedTerm::Reduced(e, reduction), level, cond }
+            if &e == event =>
+                self.cond_step_reduced(affected, e, reduction, level, cond),
+            cond => 
+                Some((affected, cond))
+        }
+    }
+
+    fn cond_step_reduced(&self, affected: ChrName, event: TurnEvent, reduction: u8, level: u8, cond: ValuedCondition) -> Option<(ChrName, Condition)> {
+        match event {
+            TurnEvent::StartOfNextTurn(_) |
+            TurnEvent::EndOfCurrentTurn(_) => {
+                reduce(reduction, level)
+                    .map(|l| Condition::builder().condition(cond).value(l).term(ValuedTerm::Reduced(event, reduction)).build())
+                    .map(|condition| (affected, condition))
+            }
+            // TurnEvent::EndOfNextTurn(_) if self.has_new_condition_on(&affected, &Condition::Valued { term: ValuedTerm::Reduced(event.clone(), reduction), level, cond }) => {
+            TurnEvent::EndOfNextTurn(_) if self.has_new_condition_on(&affected, &Condition::builder().condition(cond).value(level).term(ValuedTerm::Reduced(event.clone(), reduction)).build()) => {
+                reduce(reduction, level)
+                    .map(|l| Condition::builder().condition(cond).value(l).term(ValuedTerm::Reduced(event, reduction)).build())
+                    .map(|condition| (affected, condition))
+            },
+            TurnEvent::EndOfNextTurn(_) => Some((affected, Condition::builder().condition(cond).value(level).term(ValuedTerm::Reduced(event, reduction)).build()))
+        }
     }
 
     fn has_new_condition_on(&self, affected: &ChrName, condition: &Condition) -> bool {
         !self.new_conds.iter().any(|(a, b)| a == affected && b == condition)
     }
 
-    pub fn remove_condition(&mut self, character: &ChrName, condition: &Condition) {
-        self.conds.retain(|(affected, cond)| affected != character || cond != condition);
-    }
+}
 
-    pub fn rename_character(&mut self, character: &ChrName, new_name: ChrName) {
-        let conds = self.conds.clone().into_iter()
-            .map(|(affected, cond)| {
-                if &affected == character {
-                    (new_name.clone(), cond)
-                } else {
-                    (affected, cond)
-                }
-            })
-            .collect();
-        self.conds = conds;
+const fn reduce(reduction: u8, level: u8) -> Option<u8> {
+    let new_level = level.saturating_sub(reduction);
+    match new_level {
+        0 => None,
+        l => Some(l)
     }
+}
 
-    pub fn remove_character(&mut self, character: &ChrName) {
-        self.conds.retain(|(affected, _)| affected != character);
+fn duration_turn(dur: Duration) -> Option<Duration> {
+    match dur.in_turns() {
+        0 | 1 => None,
+        n => Some(Duration::from_turns(n - 1))
     }
+}
 
-    #[must_use]
-    pub fn get_conditions<'a>(&'a self, character: &ChrName) -> HashSet<&'a Condition> {
-        self.conds.iter()
-            .filter(|(affected, _)| affected == character)
-            .map(|(_, cond)| cond)
-            .collect()
+
+fn cond_step_for_nonvalued(event: &TurnEvent, affected: ChrName, dur: Duration, cond: NonValuedCondition) -> Option<(ChrName, Condition)> {
+    match &event {
+        TurnEvent::EndOfNextTurn(c) if c == affected => {
+            duration_turn(dur)
+                .map(NonValuedTerm::For)
+                .map(|term| Condition::builder().condition(cond).term(term).build())
+                .map(|condition| (affected, condition))
+        },
+        _ => Some((affected, Condition::builder().condition(cond).term(NonValuedTerm::For(dur)).build()))
+    }
+}
+
+fn cond_step_for_valued(event: &TurnEvent, affected: ChrName, dur: Duration, cond: ValuedCondition, level: u8) -> Option<(ChrName, Condition)> {
+    match &event {
+        TurnEvent::EndOfNextTurn(c) if c == affected => {
+            duration_turn(dur)
+                .map(ValuedTerm::For)
+                .map(|term| Condition::builder().condition(cond).value(level).term(term).build())
+                .map(|condition| (affected, condition))
+        },
+        _ => Some((affected, Condition::Valued { term: ValuedTerm::For(dur), cond, level }))
     }
 }
 
@@ -227,7 +240,7 @@ mod test {
             .term(NonValuedTerm::Until(jevil_turn_ends))
             .build();
 
-        cm.add_condition(jevil.name.clone(), dazzled.clone());
+        cm.add_condition(jevil.name, dazzled.clone());
 
         assert!(!cm.get_conditions(&chris.name).contains(&dazzled));
     }
@@ -286,7 +299,7 @@ mod test {
             .build();
 
         cm.add_condition(chris.name.clone(), dazzled.clone());
-        cm.end_of_turn(jevil.name.clone());
+        cm.end_of_turn(jevil.name);
 
         assert!(cm.get_conditions(&chris.name).contains(&dazzled));
     }
@@ -307,7 +320,7 @@ mod test {
 
         cm.add_condition(chris.name.clone(), dazzled.clone());
         cm.start_of_turn(jevil.name.clone());
-        cm.end_of_turn(jevil.name.clone());
+        cm.end_of_turn(jevil.name);
 
         assert!(!cm.get_conditions(&chris.name).contains(&dazzled));
     }

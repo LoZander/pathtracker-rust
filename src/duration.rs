@@ -81,11 +81,16 @@ impl Duration {
     }
 
     #[must_use]
-    pub fn saturating_sub(self, rhs: Self) -> Self {
+    pub fn checked_sub(self, rhs: Self) -> Option<Self> {
         let x = self.in_seconds();
         let y = rhs.in_seconds();
 
-        Self::from_seconds(x.saturating_sub(y))
+        x.checked_sub(y).map(Self::from_seconds)
+    }
+
+    #[must_use]
+    pub fn saturating_sub(self, rhs: Self) -> Self {
+        self.checked_sub(rhs).unwrap_or_else(|| Self::from_seconds(0))
     }
 }
 
