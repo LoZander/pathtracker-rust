@@ -164,7 +164,6 @@ impl<S: Saver> WindowApp<S> {
         egui::TopBottomPanel::bottom("controls").show(ctx, |ui| {
             let (lret, rret) = egui::containers::Sides::new().show(ui, 
                 |ui|{
-                    ui.add(egui::Button::new(".").min_size((20.0, 20.0).into()));
                     if button_panel_button(ui,"\u{25B6}").on_hover_text("Makes it the next characters turn.").clicked() { return Some(ButtonPanelResponse::EndTurn) }
                     if button_panel_button(ui, egui::RichText::new("+")).on_hover_text("Adds a character.").clicked() { return Some(ButtonPanelResponse::Add) }
                     if button_panel_button(ui, "\u{27F2}").on_hover_text("Undoes the last change.").clicked() { return Some(ButtonPanelResponse::Undo) }
