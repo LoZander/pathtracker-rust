@@ -463,9 +463,23 @@ impl<S: Saver> Tracker<S> {
     }
 
 
+    /// Sets the health of a character.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if
+    /// - There's no character with the given [`name`]
+    /// - Auto saving fails
     pub fn set_health(&mut self, name: &ChrName, health: Health) -> Result<()> {
         self.take_snap();
         self.unchecked_change(name, |chr| {chr.set_health(health);})
+    }
+
+    /// Clears the tracker of all characters.
+    pub fn clear(&mut self) {
+        self.take_snap();
+        self.chrs = vec![];
+        self.cm = ConditionManager::new();
     }
 
     /// Sets the current health of a character.
