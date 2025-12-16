@@ -162,26 +162,43 @@ impl<S: Saver> WindowApp<S> {
 
     fn show_button_panel(&mut self, ctx: &Context) -> Result<()> {
         egui::TopBottomPanel::bottom("controls").show(ctx, |ui| {
-            ui.horizontal(|ui| {
-                if ui.button("Next").clicked() {
-                    self.tracker.end_turn()?;
+            let (lret, rret) = egui::containers::Sides::new().show(ui, 
+                |ui|{
+                    if ui.button("Next").clicked() { return Some(ButtonPanelResponse::EndTurn) }
+                    if ui.button("add").clicked() { return Some(ButtonPanelResponse::Add) }
+                    if ui.button("\u{21BA}").clicked() { return Some(ButtonPanelResponse::Undo) }
+                    if ui.button("\u{21BB}").clicked(){ return Some(ButtonPanelResponse::Redo) }
+                    None
+                },
+                |ui|{
+                    if ui.button("\u{1F5D1}").clicked() { return Some(ButtonPanelResponse::Clear) }
+                    None
                 }
-                if ui.button("add").clicked() {
-                    self.add_window.open();
-                }
-                if ui.button("\u{21BA}").clicked() {
-                    self.tracker.undo()?;
-                }
-                if ui.button("\u{21BB}").clicked() {
-                    self.tracker.redo()?;
-                }
+            );
 
-                Ok::<(), Error>(())
-            }).inner
+            if let Some(res) = lret.or(rret) {
+                match res {
+                    ButtonPanelResponse::EndTurn => {self.tracker.end_turn()?;},
+                    ButtonPanelResponse::Add => {self.add_window.open();},
+                    ButtonPanelResponse::Undo => {self.tracker.undo()?;},
+                    ButtonPanelResponse::Redo => {self.tracker.redo()?;},
+                    ButtonPanelResponse::Clear => {self.tracker.clear();},
+                }
+            }
+
+            Ok::<(), Error>(())
         }).inner
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ButtonPanelResponse {
+    EndTurn,
+    Add,
+    Undo,
+    Redo,
+    Clear,
+}
 
 #[derive(Debug, Clone, Copy)]
 #[derive(Default)]
