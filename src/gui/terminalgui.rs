@@ -50,7 +50,7 @@ pub fn run<S: Saver>(mut t: Tracker<S>) -> Result<(), Error> {
     let mut buff = String::new();
     let stdin = io::stdin();
     let mut error: Option<Error> = None;
-    let format = CondFormat::default().set_version(t.get_options().pf2e_version);
+    let format = CondFormat::default().set_version(t.settings.pf2e_version);
     loop {
         println!("{PROLOG}");
         for chr in t.get_chrs() {

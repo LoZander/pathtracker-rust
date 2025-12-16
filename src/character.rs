@@ -202,6 +202,10 @@ impl Chr {
         false
     }
 
+    pub fn set_health(&mut self, health: Health) {
+        self.health = Some(health);
+    }
+
     pub fn set_current_health(&mut self, hp: u32) -> bool {
         if let Some(health) = &mut self.health {
             health.set_current(hp);

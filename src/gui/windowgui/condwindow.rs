@@ -112,7 +112,7 @@ impl CondWindow {
         //let frame = egui::Frame::default().inner_margin(egui::Margin::symmetric(20.0, 20.0));
         let open = &mut self.open;
         let data = &mut self.data;
-        let format = CondFormat::default().set_version(tracker.get_options().pf2e_version);
+        let format = CondFormat::default().set_version(tracker.settings.pf2e_version);
         if let Some(character) = data.character.clone() {
             let res = egui::Window::new(format!("{} Conditions", character))
                 .open(open)

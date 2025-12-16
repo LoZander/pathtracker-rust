@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use thiserror::Error;
 
-use crate::{character::{Chr, ChrName}, conditions::{Condition, condition_manager::ConditionManager}, saver::{self, Saver}, settings::Settings};
+use crate::{character::{Chr, ChrName, Health}, conditions::{Condition, condition_manager::ConditionManager}, saver::{self, Saver}, settings::Settings};
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -20,7 +20,13 @@ pub enum Error {
     RenameDupError { old: ChrName, new: String },
 
     #[error("load error: `{0}`")]
-    LoadError(#[from] saver::Error)
+    LoadError(#[from] saver::Error),
+
+    #[error("nothing to undo")]
+    UndoNothingError,
+
+    #[error("nothing to redo")]
+    RedoNothingError,
 }
 
 impl PartialEq for Error {
@@ -29,10 +35,12 @@ impl PartialEq for Error {
             (Self::AddDupError(x), Self::AddDupError(y)) |
             (Self::RmNoneError(x), Self::RmNoneError(y)) |
             (Self::ChangeNoneError(x), Self::ChangeNoneError(y)) => x == y,
-            (Self::RenameDupError { old: old1, new: new1 }, 
-                Self::RenameDupError { old: old2, new: new2 }) => 
+            (Self::RenameDupError { old: old1, new: new1 },
+                Self::RenameDupError { old: old2, new: new2 }) =>
                     old1 == old2 && new1 == new2,
-            (Self::LoadError(_), Self::LoadError(_)) => true,
+            (Self::LoadError(_), Self::LoadError(_)) |
+            (Self::UndoNothingError, Self::UndoNothingError) |
+            (Self::RedoNothingError, Self::RedoNothingError) => true,
             _ => false
         }
     }
@@ -46,16 +54,38 @@ pub struct Tracker<S: Saver> {
     in_turn_index: Option<usize>,
     saver: S,
     cm: ConditionManager,
-    options: Settings,
+    undone: Vec<Snapshot>,
+    history: Vec<Snapshot>,
+    pub settings: Settings,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[derive(Serialize, Deserialize)]
 struct TrackerData {
     chrs: Vec<Chr>,
     in_turn_index: Option<usize>,
     cm: ConditionManager,
-    options: Settings,
+    undone: Vec<Snapshot>,
+    history: Vec<Snapshot>,
+    settings: Settings,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize)]
+struct Snapshot {
+    chrs: Vec<Chr>,
+    in_turn_index: Option<usize>,
+    cm: ConditionManager,
+}
+
+impl<S: Saver> From<Tracker<S>> for Snapshot {
+    fn from(value: Tracker<S>) -> Self {
+        Self {
+            chrs: value.chrs,
+            in_turn_index: value.in_turn_index,
+            cm: value.cm
+        }
+    }
 }
 
 impl<S: Saver> From<Tracker<S>> for TrackerData {
@@ -64,7 +94,9 @@ impl<S: Saver> From<Tracker<S>> for TrackerData {
             chrs: value.chrs,
             in_turn_index: value.in_turn_index,
             cm: value.cm,
-            options: value.options
+            undone: value.undone,
+            history: value.history,
+            settings: value.settings,
         }
     }
 }
@@ -76,7 +108,9 @@ impl<S: Saver> From<TrackerData> for Tracker<S> {
             in_turn_index: value.in_turn_index,
             saver: S::default(),
             cm: value.cm,
-            options: value.options
+            undone: value.undone,
+            history: value.history,
+            settings: value.settings,
         }
     }
 }
@@ -133,7 +167,9 @@ impl<S: Saver> Builder<S> {
             in_turn_index: self.in_turn_index,
             saver: self.saver,
             cm: self.cm,
-            options: Settings::default()
+            undone: vec![],
+            history: vec![],
+            settings: Settings::default()
         }
     }
 }
@@ -144,10 +180,6 @@ impl<S: Saver> Tracker<S> {
     #[must_use]
     pub fn builder() -> Builder<S> {
         Builder::new(S::default())
-    }
-
-    pub fn get_options(&self) -> Settings {
-        self.options
     }
 
     /// Returns a reference to the character [`Chr`] with the given [`name`],
@@ -162,6 +194,50 @@ impl<S: Saver> Tracker<S> {
         self.chrs.iter().enumerate().find(|(_,x)| x.name == name).map(|e| e.0)
     }
 
+    /// Undoes the last change made to the tracker.
+    ///
+    /// # Errors
+    /// This fails with [`Error::UndoNothingError`] if the stack of
+    /// changes is empty, i.e. if the tracker is completely clean.
+    pub fn undo(&mut self) -> Result<()> {
+        let prev = self.history.pop().ok_or(Error::UndoNothingError)?;
+        let curr: Snapshot = self.clone().into();
+        
+        self.recover(&prev);
+
+        self.undone.push(curr);
+
+        Ok(())
+    }
+
+    /// Redoes the last undone change to the tracker.
+    ///
+    /// # Errors
+    /// This fails with [`Error::RedoNothingError`] if the stack of
+    /// undone changes is empty.
+    pub fn redo(&mut self) -> Result<()> {
+        let next = self.undone.pop().ok_or(Error::RedoNothingError)?;
+        let curr: Snapshot = self.clone().into();
+
+        self.recover(&next);
+
+        self.history.push(curr);
+
+        Ok(())
+    }
+
+    fn recover(&mut self, snapshot: &Snapshot) {
+        self.chrs.clone_from(&snapshot.chrs);
+        self.in_turn_index = snapshot.in_turn_index;
+        self.cm.clone_from(&snapshot.cm);
+    }
+
+    fn take_snap(&mut self) {
+        self.undone = vec![];
+        self.history.push(self.clone().into());
+        self.history.truncate(self.settings.undo_size);
+    }
+
     /// Returns a reference to characters of this [`Tracker<S>`].
     pub fn get_chrs(&self) -> &[Chr] {
         &self.chrs[..]
@@ -174,6 +250,12 @@ impl<S: Saver> Tracker<S> {
     ///
     /// This function will return an error if auto saving fails.
     pub fn end_turn(&mut self) -> Result<Option<&Chr>> {
+        self.take_snap();
+
+        self.end_turn_no_snap()
+    }
+
+    fn end_turn_no_snap(&mut self) -> Result<Option<&Chr>> {
         if let Some(chr) = self.get_in_turn().cloned() {
             let damage = self.cm.end_of_turn(chr.name.clone());
             if let Some(damage) = damage {
@@ -208,6 +290,8 @@ impl<S: Saver> Tracker<S> {
     ///
     /// This function will return an error if auto saving fails.
     pub fn add_chr(&mut self, chr: Chr) -> Result<()> {
+        self.take_snap();
+
         if self.get_chr(&chr.name).is_some() { 
             return Err(Error::AddDupError(chr.name))
             // return Err(format!("Cannot add character {:?} since there is already a character by this name.", chr)) 
@@ -235,6 +319,8 @@ impl<S: Saver> Tracker<S> {
     /// - There is no character named [`name`]
     /// - Auto saving fails.
     pub fn add_condition(&mut self, name: ChrName, cond: Condition) -> Result<()> {
+        self.take_snap();
+
         match self.get_chr(&name) {
             None => Err(Error::ChangeNoneError(name.clone())),
             Some(_) => {
@@ -259,6 +345,7 @@ impl<S: Saver> Tracker<S> {
     /// If there is no character with the given name, or the character has no
     /// such condition, nothing happens.
     pub fn rm_condition(&mut self, character: &ChrName, condition: &Condition) {
+        self.take_snap();
         self.cm.remove_condition(character, condition);
     }
     
@@ -273,6 +360,8 @@ impl<S: Saver> Tracker<S> {
     /// - There is no character with the given [`name`]
     /// - Auto saving fails.
     pub fn rm_chr(&mut self, name: &ChrName) -> Result<()> {
+        self.take_snap();
+
         let rm_index = self.chrs.iter()
             .position(|chr| chr.name == name)
             .ok_or_else(|| Error::RmNoneError(name.clone()))?;
@@ -297,7 +386,7 @@ impl<S: Saver> Tracker<S> {
                     // only to then end the turn (which increments it), 
                     // ending the turn has other effects which should occur in this situation.
                     self.in_turn_index = in_turn.checked_sub(1);
-                    self.end_turn()?;
+                    self.end_turn_no_snap()?;
                 }
                 Ordering::Greater => ()
             }
@@ -316,6 +405,8 @@ impl<S: Saver> Tracker<S> {
     /// - There's no character with the given [`name`] 
     /// - Auto saving fails.
     pub fn rename(&mut self, old: &ChrName, new: impl Into<String>) -> Result<()> {
+        self.take_snap();
+
         let new: String = new.into();
         if self.chrs.iter().any(|chr| chr.name == new) {
             return Err(Error::RenameDupError { old: old.clone(), new })
@@ -339,6 +430,7 @@ impl<S: Saver> Tracker<S> {
     /// - There's no character with the given [`name`]
     /// - Auto saving fails.
     pub fn change_init(&mut self, name: &ChrName, init: i32) -> Result<Option<MovedStatus>> {
+        self.take_snap();
         self.change(name, |chr| chr.init = init)
     }
 
@@ -352,6 +444,7 @@ impl<S: Saver> Tracker<S> {
     /// - There's no character with the given [`name`]
     /// - Auto saving fails.
     pub fn set_player(&mut self, name: &ChrName, player: bool) -> Result<()> {
+        self.take_snap();
         self.unchecked_change(name, |chr| chr.player = player)
     }
 
@@ -365,18 +458,49 @@ impl<S: Saver> Tracker<S> {
     /// - There's no character with the given [`name`] 
     /// - Auto saving fails.
     pub fn change_max_health(&mut self, name: &ChrName, max: u32) -> Result<()> {
+        self.take_snap();
         self.unchecked_change(name, |chr| {chr.set_max_health(max);})
     }
 
+
+    pub fn set_health(&mut self, name: &ChrName, health: Health) -> Result<()> {
+        self.take_snap();
+        self.unchecked_change(name, |chr| {chr.set_health(health);})
+    }
+
+    /// Sets the current health of a character.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if
+    /// - There's no character with the given name [`name`]
+    /// - Auto saving fails
     pub fn set_current_health(&mut self, name: &ChrName, hp: u32) -> Result<()> {
+        self.take_snap();
         self.unchecked_change(name, |chr| {chr.set_current_health(hp);})
     }
 
+    /// Sets the temp health of a character.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if
+    /// - There's no character with the given name [`name`]
+    /// - Auto saving fails
     pub fn set_temp_health(&mut self, name: &ChrName, hp: u32) -> Result<()> {
+        self.take_snap();
         self.unchecked_change(name, |chr| {chr.set_temp_health(hp);})
     }
 
+    /// Adds to the temp health of a character.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if
+    /// - There's no character with the given name [`name`]
+    /// - Auto saving fails
     pub fn add_temp_health(&mut self, name: &ChrName, hp: u32) -> Result<()> {
+        self.take_snap();
         self.unchecked_change(name, |chr| {chr.add_temp_health(hp);})
     }
 
@@ -388,6 +512,7 @@ impl<S: Saver> Tracker<S> {
     /// - There's no character with the given [`name`]
     /// - Auto saving fails.
     pub fn damage(&mut self, name: &ChrName, amount: u32) -> Result<()> {
+        self.take_snap();
         self.unchecked_change(name, |chr| { chr.damage(amount); })
     }
 
@@ -399,6 +524,7 @@ impl<S: Saver> Tracker<S> {
     /// - There's no character wit hthe given [`name`]
     /// - Auto saving fails.
     pub fn heal(&mut self, name: &ChrName, heal: u32) -> Result<()> {
+        self.take_snap();
         self.unchecked_change(name, |chr| { chr.heal(heal); })
     }
 
