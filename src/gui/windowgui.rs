@@ -169,6 +169,12 @@ impl<S: Saver> WindowApp<S> {
                 if ui.button("add").clicked() {
                     self.add_window.open();
                 }
+                if ui.button("\u{21BA}").clicked() {
+                    self.tracker.undo()?;
+                }
+                if ui.button("\u{21BB}").clicked() {
+                    self.tracker.redo()?;
+                }
 
                 Ok::<(), Error>(())
             }).inner

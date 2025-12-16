@@ -107,7 +107,7 @@ fn show_conds_col(tracker: &Tracker<impl Saver>, responses: &mut Vec<Response>, 
     row.col(|ui| {
         let mut conditions: Vec<_> = tracker.get_conditions(&character.name).into_iter().map(ToOwned::to_owned).collect();
         conditions.sort();
-        let format = CondFormat::default().set_version(tracker.get_options().pf2e_version);
+        let format = CondFormat::default().set_version(tracker.settings.pf2e_version);
         let condition_str = conditions.iter().take(2).map(|c| c.to_string(format)).collect::<Vec<_>>().join("\n");
 
         let conds = if conditions.len() <= 2 {

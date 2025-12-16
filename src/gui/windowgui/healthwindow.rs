@@ -1,5 +1,5 @@
 use egui::Context;
-use crate::{character::ChrName, saver::Saver, tracker::Tracker};
+use crate::{character::{ChrName, Health}, saver::Saver, tracker::Tracker};
 
 use super::Confirmation;
 
@@ -65,10 +65,8 @@ impl HealthWindow {
 
         match confirmation {
             Some(Confirmation::Confirm) => {
-                tracker.change_max_health(name, self.health.max)?;
-                tracker.set_current_health(name, self.health.current)?;
-                tracker.set_temp_health(name, self.health.temp)?;
-
+                let health = Health { max: self.health.max, current: self.health.current, temp: self.health.temp };
+                tracker.set_health(name, health)?;
                 self.close();
             },
             Some(Confirmation::Cancel) => self.close(),
