@@ -1,7 +1,7 @@
 use addwindow::AddWindow;
 use condwindow::CondWindow;
 use dragvaluewindow::DragValueWindow;
-use egui::{Context, Ui};
+use egui::{Context, IntoAtoms, Ui};
 use errorwindow::ErrorWindow;
 use healthwindow::HealthWindow;
 use renamewindow::RenameWindow;
@@ -164,14 +164,15 @@ impl<S: Saver> WindowApp<S> {
         egui::TopBottomPanel::bottom("controls").show(ctx, |ui| {
             let (lret, rret) = egui::containers::Sides::new().show(ui, 
                 |ui|{
-                    if ui.button("Next").clicked() { return Some(ButtonPanelResponse::EndTurn) }
-                    if ui.button("add").clicked() { return Some(ButtonPanelResponse::Add) }
-                    if ui.button("\u{21BA}").clicked() { return Some(ButtonPanelResponse::Undo) }
-                    if ui.button("\u{21BB}").clicked(){ return Some(ButtonPanelResponse::Redo) }
+                    ui.add(egui::Button::new(".").min_size((20.0, 20.0).into()));
+                    if button_panel_button(ui,"\u{25B6}").on_hover_text("Makes it the next characters turn.").clicked() { return Some(ButtonPanelResponse::EndTurn) }
+                    if button_panel_button(ui, egui::RichText::new("+")).on_hover_text("Adds a character.").clicked() { return Some(ButtonPanelResponse::Add) }
+                    if button_panel_button(ui, "\u{27F2}").on_hover_text("Undoes the last change.").clicked() { return Some(ButtonPanelResponse::Undo) }
+                    if button_panel_button(ui, "\u{27F3}").on_hover_text("Redoes the last undone change.").clicked(){ return Some(ButtonPanelResponse::Redo) }
                     None
                 },
                 |ui|{
-                    if ui.button("\u{1F5D1}").clicked() { return Some(ButtonPanelResponse::Clear) }
+                    if button_panel_button(ui, "\u{1F5D1}").on_hover_text("Removes every character.").clicked() { return Some(ButtonPanelResponse::Clear) }
                     None
                 }
             );
@@ -189,6 +190,12 @@ impl<S: Saver> WindowApp<S> {
             Ok::<(), Error>(())
         }).inner
     }
+}
+
+const BUTTON_SIZE: f32 = 20.0;
+fn button_panel_button<'a>(ui: &mut egui::Ui, atoms: impl IntoAtoms<'a>) -> egui::Response {
+    let button = egui::Button::new(atoms).min_size((BUTTON_SIZE, BUTTON_SIZE).into());
+    ui.add(button)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
