@@ -1,5 +1,5 @@
 use egui::{Align, ProgressBar, Ui}; use egui_extras::{Column, TableBuilder, TableRow};
-use crate::{character::{Chr, ChrName, Health}, conditions::{CondFormat, Condition}, saver::Saver, tracker::Tracker};
+use crate::{character::{Chr, ChrName, Health}, conditions::CondFormat, saver::Saver, tracker::Tracker};
 
 #[derive(Debug, Clone)]
 pub enum Response {
@@ -61,7 +61,8 @@ pub fn show<S: Saver>(tracker: &Tracker<S>, ui: &mut Ui) -> Vec<Response> {
 
 fn show_remove_col(responses: &mut Vec<Response>, row: &mut TableRow<'_, '_>, character: &Chr) {
     row.col(|ui| {
-        if ui.small_button("x").clicked() {
+        let button = egui::Button::new("\u{1F5D9}").frame(false).small();
+        if ui.add(button).clicked() {
             responses.push(Response::RemoveCharacter(character.name.clone()));
         }
     });
@@ -70,7 +71,9 @@ fn show_remove_col(responses: &mut Vec<Response>, row: &mut TableRow<'_, '_>, ch
 #[allow(clippy::collapsible_if)]
 fn show_options_col(responses: &mut Vec<Response>, row: &mut TableRow<'_, '_>, character: &Chr) {
     row.col(|ui| {
-        ui.menu_button("...", |ui| {
+        let button = egui::Button::new("\u{2699}").frame(false).small();
+        let button_res = ui.add(button);
+        egui::Popup::menu(&button_res).show(|ui|{
             if ui.button("Conditions").clicked() {
                 responses.push(Response::OpenCondWindow(character.name.clone()));
             }
@@ -127,7 +130,7 @@ fn show_conds_col(tracker: &Tracker<impl Saver>, responses: &mut Vec<Response>, 
 fn show_in_turn_marker_col(row: &mut TableRow<'_, '_>, is_in_turn: bool) {
     row.col(|ui| {
         if is_in_turn {
-            ui.add(egui::Label::new(egui::RichText::new(">").heading().strong()));
+            ui.add(egui::Label::new(egui::RichText::new("\u{25B6}").strong()));
         }
     });
 }
@@ -137,17 +140,7 @@ fn show_health_col(responses: &mut Vec<Response>, row: &mut TableRow<'_, '_>, ch
         if let Some(health) = &character.health {
             let bar_resp = ui.add(health_bar(health)).interact(egui::Sense::click());
 
-            if bar_resp.clicked() {
-                responses.push(Response::OpenHealthWindow(character.name.clone()));
-            }
-
-            let health_bar_menu_id = ui.make_persistent_id("health_bar_menu");
-
-            if bar_resp.secondary_clicked() {
-                ui.memory_mut(|mem| mem.toggle_popup(health_bar_menu_id));
-            }
-
-            egui::popup_below_widget(ui, health_bar_menu_id, &bar_resp, egui::PopupCloseBehavior::CloseOnClick, |ui| {
+            egui::Popup::menu(&bar_resp).close_behavior(egui::PopupCloseBehavior::CloseOnClick).show(|ui|{
                 if ui.button("Damage").clicked() {
                     responses.push(Response::OpenDamageWindow(character.name.clone()));
                 }
@@ -187,16 +180,16 @@ fn show_name_col(responses: &mut Vec<Response>, row: &mut TableRow<'_, '_>, char
 const HP_WIDTH: f32 = 100.0;
 
 fn health_bar(hp: &Health) -> ProgressBar {
-    let rel_hp: f32 = (hp.current as f32) / (hp.max as f32);
+    let rel_hp = (f64::from(hp.current) / f64::from(hp.max)) as f32;
 
     let hp_str = if hp.temp > 0 {
         format!("{}/{} + {}", hp.current, hp.max, hp.temp)
     } else {
         format!("{}/{}", hp.current, hp.max)
     };
-    
+
     egui::ProgressBar::new(rel_hp)
         .text(hp_str)
-        .rounding(2.0)
+        .corner_radius(2.0)
         .desired_width(HP_WIDTH)
 }
