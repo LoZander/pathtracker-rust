@@ -17,7 +17,7 @@ pub struct Settings {
 
 impl Default for Settings {
     fn default() -> Self {
-        Self { pf2e_version: Pf2eVersion::default(), undo_size: 128 }
+        Self { pf2e_version: Pf2eVersion::default(), undo_size: 64 }
     }
 }
 
