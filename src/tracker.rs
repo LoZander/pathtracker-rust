@@ -228,8 +228,10 @@ impl<S: Saver> Tracker<S> {
     /// Undoes the last change made to the tracker.
     ///
     /// # Errors
-    /// This fails with [`Error::UndoNothingError`] if the stack of
-    /// changes is empty, i.e. if the tracker is completely clean.
+    ///
+    /// This function will return an error if
+    /// - The undo stack is empty (nothing to undo)
+    /// - Auto saving fails.
     pub fn undo(&mut self) -> Result<()> {
         let prev = self.history.pop().ok_or(Error::UndoNothingError)?;
         let curr: Snapshot = self.clone().into();
@@ -238,14 +240,18 @@ impl<S: Saver> Tracker<S> {
 
         self.undone.push(curr);
 
+        self.auto_save()?;
+
         Ok(())
     }
 
     /// Redoes the last undone change to the tracker.
     ///
     /// # Errors
-    /// This fails with [`Error::RedoNothingError`] if the stack of
-    /// undone changes is empty.
+    ///
+    /// This function will return an error if
+    /// - The redo stack is empty (nothing to redo)
+    /// - Auto saving fails.
     pub fn redo(&mut self) -> Result<()> {
         let next = self.undone.pop().ok_or(Error::RedoNothingError)?;
         let curr: Snapshot = self.clone().into();
@@ -253,6 +259,8 @@ impl<S: Saver> Tracker<S> {
         self.recover(&next);
 
         self.history.push(curr);
+
+        self.auto_save()?;
 
         Ok(())
     }
