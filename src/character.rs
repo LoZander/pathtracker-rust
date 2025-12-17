@@ -123,7 +123,8 @@ impl PartialEq<ChrName> for str {
 
 impl PartialEq<String> for ChrName {
     fn eq(&self, other: &String) -> bool {
-        self.0 == other.as_ref()
+        let cast: &str = other.as_ref();
+        self.0 == cast
     }
 }
 
