@@ -1,9 +1,9 @@
-use std::{cmp::Ordering, collections::HashSet};
+use std::{cmp::Ordering, collections::{HashSet, VecDeque}};
 use serde::{Deserialize, Serialize};
 
 use thiserror::Error;
 
-use crate::{character::{Chr, ChrName, Health}, conditions::{Condition, condition_manager::ConditionManager}, saver::{self, Saver}, settings::Settings};
+use crate::{character::{Chr, ChrName, Health}, conditions::{Condition, condition_manager::ConditionManager}, saver::{self, Saver}, settings::{Pf2eVersion, Settings}};
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -54,9 +54,9 @@ pub struct Tracker<S: Saver> {
     in_turn_index: Option<usize>,
     saver: S,
     cm: ConditionManager,
-    undone: Vec<Snapshot>,
-    history: Vec<Snapshot>,
-    pub settings: Settings,
+    undone: BoundedStack<Snapshot>,
+    history: BoundedStack<Snapshot>,
+    settings: Settings,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -65,9 +65,39 @@ struct TrackerData {
     chrs: Vec<Chr>,
     in_turn_index: Option<usize>,
     cm: ConditionManager,
-    undone: Vec<Snapshot>,
-    history: Vec<Snapshot>,
+    undone: BoundedStack<Snapshot>,
+    history: BoundedStack<Snapshot>,
     settings: Settings,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize)]
+struct BoundedStack<T> {
+    stack: VecDeque<T>,
+    bound: usize
+}
+
+impl<T> BoundedStack<T> {
+    pub const fn new(bound: usize) -> Self {
+        Self {
+            stack: VecDeque::new(),
+            bound
+        }
+    }
+
+    pub fn push(&mut self, elem: T) {
+        self.stack.push_front(elem);
+        self.stack.truncate(self.bound);
+    }
+
+    pub fn pop(&mut self) -> Option<T> {
+        self.stack.pop_front()
+    }
+
+    pub fn set_bound(&mut self, bound: usize) {
+        self.bound = bound;
+        self.stack.truncate(bound);
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -161,15 +191,16 @@ impl<S: Saver> Builder<S> {
 
     /// Builds a [`Tracker<S>`] from a [`TrackerBuilder<S>`].
     pub fn build(self) -> Tracker<S> {
+        let settings = Settings::default();
 
         Tracker {
             chrs: self.chrs,
             in_turn_index: self.in_turn_index,
             saver: self.saver,
             cm: self.cm,
-            undone: vec![],
-            history: vec![],
-            settings: Settings::default()
+            undone: BoundedStack::new(settings.get_undo_size()),
+            history: BoundedStack::new(settings.get_undo_size()),
+            settings
         }
     }
 }
@@ -233,9 +264,8 @@ impl<S: Saver> Tracker<S> {
     }
 
     fn take_snap(&mut self) {
-        self.undone = vec![];
+        self.undone = BoundedStack::new(self.settings.get_undo_size());
         self.history.push(self.clone().into());
-        self.history.truncate(self.settings.undo_size);
     }
 
     /// Returns a reference to characters of this [`Tracker<S>`].
@@ -347,6 +377,24 @@ impl<S: Saver> Tracker<S> {
     pub fn rm_condition(&mut self, character: &ChrName, condition: &Condition) {
         self.take_snap();
         self.cm.remove_condition(character, condition);
+    }
+
+    pub fn set_undo_size_setting(&mut self, value: usize) {
+        self.settings.set_undo_size(value);
+        self.history.set_bound(value);
+        self.undone.set_bound(value);
+    }
+
+    pub fn set_pf2e_version_setting(&mut self, value: Pf2eVersion) {
+        self.settings.set_pf2e_version(value);
+    }
+
+    pub fn get_undo_size_setting(&self) -> usize {
+        self.settings.get_undo_size()
+    }
+
+    pub fn get_pf2e_version_setting(&self) -> Pf2eVersion {
+        self.settings.get_pf2e_version()
     }
     
     /// Removes a character with the given [`name`] from this [`Tracker<S>`].
@@ -595,7 +643,7 @@ impl<S: Saver> Tracker<S> {
         Ok(())
     }
 
-    fn auto_save(&self) -> Result<()> {
+    pub fn auto_save(&self) -> Result<()> {
         self.save("auto.save")?;
         Ok(())
     }

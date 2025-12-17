@@ -6,7 +6,7 @@ use errorwindow::ErrorWindow;
 use healthwindow::HealthWindow;
 use renamewindow::RenameWindow;
 
-use crate::{character::ChrName, saver::Saver, tracker::{self, Tracker}};
+use crate::{character::ChrName, gui::windowgui::settingswindow::SettingsWindow, saver::Saver, tracker::{self, Tracker}};
 
 mod condwindow;
 mod errorwindow;
@@ -15,6 +15,7 @@ mod characters;
 mod renamewindow;
 mod healthwindow;
 mod dragvaluewindow;
+mod settingswindow;
 
 #[derive(Debug)]
 #[derive(thiserror::Error)]
@@ -50,6 +51,7 @@ struct WindowApp<S: Saver> {
     damage_window: DragValueWindow<u32, ChrName>,
     heal_window: DragValueWindow<u32, ChrName>,
     add_temp_hp_window: DragValueWindow<u32, ChrName>,
+    settings_window: SettingsWindow,
 }
 
 impl<S: Saver> eframe::App for WindowApp<S> {
@@ -67,6 +69,8 @@ impl<S: Saver> eframe::App for WindowApp<S> {
         if let Err(err) = res {
             self.error_window.open(err);
         }
+
+        self.settings_window.show(&mut self.tracker, ctx);
     }
 }
 
@@ -82,6 +86,7 @@ impl<S: Saver> WindowApp<S> {
             damage_window: DragValueWindow::default(),
             heal_window: DragValueWindow::default(),
             add_temp_hp_window: DragValueWindow::default(),
+            settings_window: SettingsWindow::default(),
         }
     }
     
@@ -172,17 +177,19 @@ impl<S: Saver> WindowApp<S> {
                 },
                 |ui|{
                     if button_panel_button(ui, "\u{1F5D1}").on_hover_text("Removes every character.").clicked() { return Some(ButtonPanelResponse::Clear) }
+                    if button_panel_button(ui, "\u{2699}").on_hover_text("General settings.").clicked() { return Some(ButtonPanelResponse::Settings) }
                     None
                 }
             );
 
             if let Some(res) = lret.or(rret) {
                 match res {
-                    ButtonPanelResponse::EndTurn => {self.tracker.end_turn()?;},
-                    ButtonPanelResponse::Add => {self.add_window.open();},
-                    ButtonPanelResponse::Undo => {self.tracker.undo()?;},
-                    ButtonPanelResponse::Redo => {self.tracker.redo()?;},
-                    ButtonPanelResponse::Clear => {self.tracker.clear();},
+                    ButtonPanelResponse::EndTurn => {self.tracker.end_turn()?;}
+                    ButtonPanelResponse::Add => {self.add_window.open();}
+                    ButtonPanelResponse::Undo => {self.tracker.undo()?;}
+                    ButtonPanelResponse::Redo => {self.tracker.redo()?;}
+                    ButtonPanelResponse::Clear => {self.tracker.clear();}
+                    ButtonPanelResponse::Settings => {self.settings_window.open(&self.tracker);}
                 }
             }
 
@@ -204,9 +211,10 @@ enum ButtonPanelResponse {
     Undo,
     Redo,
     Clear,
+    Settings,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[derive(Default)]
 enum Confirmation {
     Confirm,
